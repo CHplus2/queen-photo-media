@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "Customer and walk-in photo orders in Queen Photo Studio",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerPhone": { "type": "string", "maxLength": 30 },
+        "customerAddress": { "type": "string", "maxLength": 300 },
+        "district": { "type": "string", "maxLength": 100 },
+        "channel": { "type": "string", "enum": ["ONLINE", "WALKIN"] },
+        "deliveryMethod": { "type": "string" },
+        "deliveryFee": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "totalProfit": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "orderStatus": { "type": "string" },
+        "staffNotes": { "type": "string", "maxLength": 500 },
+        "trackingNumber": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "customerName", "customerPhone", "totalAmount", "orderStatus"]
+    },
+    "StudioConfig": {
+      "title": "StudioConfig",
+      "description": "Queen Photo studio financial target and paper pricing configuration",
+      "type": "object",
+      "properties": {
+        "monthlyRevenueTarget": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "ServiceItem": {
+      "title": "ServiceItem",
+      "description": "Menu and product offerings in Queen Photo Studio",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "basePrice": { "type": "number" },
+        "estimatedCost": { "type": "number" },
+        "unit": { "type": "string" },
+        "paperType": { "type": "string" },
+        "popular": { "type": "boolean" },
+        "options": { "type": "object" }
+      },
+      "required": ["id", "name", "category", "basePrice", "estimatedCost"]
+    }
+  },
+  "firestore": {
+    "/services/{serviceId}": {
+      "schema": "ServiceItem",
+      "description": "Collection of photo studio services and menu items"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of photo studio orders"
+    },
+    "/studio_settings/{settingId}": {
+      "schema": "StudioConfig",
+      "description": "Studio configuration settings"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Queen Photo Studio Pontianak",
+  "description": "Platform digital resmi Queen Photo Pontianak: Pemesanan cetak foto, pas foto, restorasi foto lawas, pengiriman GrabExpress Pontianak, serta sistem kasir & kalkulator laba studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
