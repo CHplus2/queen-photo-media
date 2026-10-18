@@ -1,3 +1,4 @@
+import bundledPhoto0 from '../assets/images/queen_photo_vintage_restoration_1791784459211.jpg';
 import React from 'react';
 import { useStudio } from '../context/StudioContext';
 import { Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
@@ -16,7 +17,7 @@ export const RestorationShowcase: React.FC = () => {
           <div className="lg:col-span-7">
             <div className="relative rounded-2xl overflow-hidden border border-stone-200 shadow-md bg-stone-900 select-none">
               <img
-                src="/src/assets/images/queen_photo_vintage_restoration_1791784459211.jpg"
+                src={bundledPhoto0}
                 alt="Perbandingan restorasi foto lawas 1987 Queen Photo Pontianak"
                 className="w-full h-auto object-cover aspect-[4/3]"
                 referrerPolicy="no-referrer"

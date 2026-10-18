@@ -98,6 +98,7 @@ export interface OrderItem {
 export interface Order {
   id: string; // e.g., QP-2610-001
   createdAt: string;
+  ownerUid?: string;
   customerName: string;
   customerPhone: string;
   customerEmail?: string;

@@ -1,3 +1,4 @@
+import bundledPhoto0 from '../assets/images/queen_photo_genz_photostrips_1791787249531.jpg';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { ServiceCategory, ServiceItem } from '../types';
@@ -98,7 +99,7 @@ export const ServicesCatalog: React.FC = () => {
 
           <div className="lg:col-span-6 aspect-[4/3] lg:aspect-auto lg:h-full relative overflow-hidden bg-stone-100">
             <img
-              src="/src/assets/images/queen_photo_genz_photostrips_1791787249531.jpg"
+              src={bundledPhoto0}
               alt="Koleksi photostrip dan polaroid mini Queen Photo Pontianak"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"

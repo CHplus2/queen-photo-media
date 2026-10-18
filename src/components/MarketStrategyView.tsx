@@ -90,6 +90,7 @@ export const MarketStrategyView: React.FC = () => {
   return (
     <div className="py-6 sm:py-10 max-w-6xl mx-auto px-4 sm:px-6 space-y-8 sm:space-y-10">
       
+      <p className="bg-amber-50 border border-amber-200 p-4 rounded-lg text-sm">Hipotesis pemasaran: anggaran, frekuensi, dan preferensi segmen di halaman ini belum divalidasi dengan riset lokal. Gunakan transaksi nyata dan survei pelanggan untuk menguji penawaran sebelum berinvestasi.</p>
       {/* Header */}
       <div className="space-y-3 pb-6 border-b border-stone-200">
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-900 rounded-full text-xs font-semibold">

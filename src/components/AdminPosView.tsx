@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { Order, OrderStatus, OrderChannel, PaymentMethod } from '../types';
 import { formatRupiah, formatDateTime, generateWhatsAppRecapText, createWhatsAppOrderLink } from '../utils/formatters';
-import { 
-  Plus, Search, Share2, CheckCircle2, Clock, Printer, 
-  MessageSquare, User, Smartphone, CreditCard, Check, Trash2, 
+import {
+  Plus, Search, Share2, CheckCircle2, Clock, Printer,
+  MessageSquare, User, Smartphone, CreditCard, Check, Trash2,
   Eye, X, ExternalLink, AlertTriangle, RefreshCw, Layers, ShieldCheck
 } from 'lucide-react';
 
@@ -13,12 +13,12 @@ interface AdminPosViewProps {
 }
 
 export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) => {
-  const { 
-    orders, 
-    services, 
-    addOrder, 
-    updateOrderStatus, 
-    updateOrderPayment, 
+  const {
+    orders,
+    services,
+    addOrder,
+    updateOrderStatus,
+    updateOrderPayment,
     deleteOrder,
     monthlyRevenueTarget,
     seedFirestoreDataNow,
@@ -58,6 +58,7 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
     const totalCost = unitCost * walkinQty;
     const totalProfit = subtotal - totalCost;
 
+    try {
     const newOrder = await addOrder({
       customerName: walkinName,
       customerPhone: walkinPhone || '08xxxxxxxx',
@@ -96,6 +97,7 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
     setActionAlert(`✅ Transaksi Walk-in #${newOrder.id} berhasil dicatat! Stok bahan otomatis terpotong.`);
     setTimeout(() => setActionAlert(''), 5000);
     onPrintReceipt(newOrder);
+    } catch (error) { alert(error instanceof Error ? error.message : 'Transaksi belum tersimpan. Silakan coba lagi.'); }
   };
 
   // Copy WhatsApp Daily Recap
@@ -145,7 +147,7 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
 
   return (
     <div className="py-6 sm:py-10 max-w-7xl mx-auto px-4 sm:px-6 space-y-6 sm:space-y-8">
-      
+
       {/* Top Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
@@ -236,10 +238,11 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
 
       {/* QUICK WALKIN COUNTER FORM */}
       {showWalkinForm && (
-        <form 
+        <form
           onSubmit={handleWalkinSubmit}
           className="p-6 bg-stone-900 text-stone-100 rounded-2xl border border-stone-800 shadow-xl space-y-4 animate-in fade-in duration-200"
         >
+          <label className="flex gap-2 text-sm text-stone-900 p-3 bg-amber-50"><input type="checkbox" required />Saya sudah menerima dan memeriksa pembayaran pelanggan.</label>
           <div className="flex items-center justify-between pb-3 border-b border-stone-800">
             <h3 className="text-base font-bold text-amber-300">
               ⚡ Kasir Cepat Walk-In Studio (Pelanggan Datang Langsung)
@@ -463,8 +466,8 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
       <div className="md:hidden space-y-3">
         {filteredOrders.length > 0 ? (
           filteredOrders.map(order => {
-            const marginPct = order.totalAmount > 0 
-              ? Math.round((order.totalProfit / order.totalAmount) * 100) 
+            const marginPct = order.totalAmount > 0
+              ? Math.round((order.totalProfit / order.totalAmount) * 100)
               : 0;
 
             return (
@@ -560,8 +563,8 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
                     </a>
                     <button
                       onClick={() => {
-                        if (confirm(`Hapus transaksi #${order.id}?`)) {
-                          deleteOrder(order.id);
+                        if (confirm(`Batalkan transaksi #${order.id}?`)) {
+                          updateOrderStatus(order.id, 'DIBATALKAN').catch(() => alert('Gagal membatalkan pesanan.'));
                         }
                       }}
                       className="p-1.5 rounded-lg hover:bg-rose-100 text-rose-600 min-h-[36px] min-w-[36px] flex items-center justify-center"
@@ -599,8 +602,8 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
             <tbody className="divide-y divide-stone-100">
               {filteredOrders.length > 0 ? (
                 filteredOrders.map(order => {
-                  const marginPct = order.totalAmount > 0 
-                    ? Math.round((order.totalProfit / order.totalAmount) * 100) 
+                  const marginPct = order.totalAmount > 0
+                    ? Math.round((order.totalProfit / order.totalAmount) * 100)
                     : 0;
 
                   return (
@@ -737,10 +740,10 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
                           </a>
 
                           <button
-                            title="Hapus Transaksi"
+                            title="Batalkan Transaksi"
                             onClick={() => {
-                              if (confirm(`Hapus transaksi #${order.id}?`)) {
-                                deleteOrder(order.id);
+                              if (confirm(`Batalkan transaksi #${order.id}?`)) {
+                                updateOrderStatus(order.id, 'DIBATALKAN').catch(() => alert('Gagal membatalkan pesanan.'));
                               }
                             }}
                             className="p-1.5 rounded-md hover:bg-rose-100 text-rose-600 transition-colors"
@@ -789,7 +792,7 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
 
             {/* Body */}
             <div className="p-6 overflow-y-auto space-y-6 text-xs">
-              
+
               {/* Customer & Delivery Card */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-stone-50 rounded-xl border border-stone-200">
                 <div>
@@ -882,7 +885,7 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
                   <span className="font-mono">{formatRupiah(detailOrder.totalCost)}</span>
                 </div>
                 <div className="flex justify-between text-emerald-700 font-bold text-xs">
-                  <span>Keuntungan Bersih (Profit Margin):</span>
+                  <span>Estimasi Laba Kotor:</span>
                   <span className="font-mono">{formatRupiah(detailOrder.totalProfit)}</span>
                 </div>
               </div>
@@ -910,7 +913,7 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
                     <option value="PROSES_CETAK">Proses Cetak Mesin</option>
                     <option value="SIAP_DIAMBIL_KIRIM">Siap Diambil / Kirim Grab</option>
                     <option value="SELESAI">Selesai</option>
-                    <option value="DIBATALKAN">Dibatalkan (Kembalikan Stok Inventaris)</option>
+                    <option value="DIBATALKAN">Dibatalkan</option>
                   </select>
                 </div>
 
@@ -922,7 +925,8 @@ export const AdminPosView: React.FC<AdminPosViewProps> = ({ onPrintReceipt }) =>
                     value={detailOrder.paymentStatus}
                     onChange={async (e) => {
                       const newPay = e.target.value as 'BELUM_BAYAR' | 'LUNAS';
-                      await updateOrderPayment(detailOrder.id, newPay);
+                      if (newPay === 'LUNAS' && !window.confirm('Pembayaran sudah benar-benar diterima dan diperiksa?')) return;
+                      try { await updateOrderPayment(detailOrder.id, newPay); } catch { alert('Perubahan pembayaran belum tersimpan. Coba kembali.'); return; }
                       setDetailOrder({ ...detailOrder, paymentStatus: newPay });
                     }}
                     className="w-full border border-stone-300 rounded-lg px-3 py-2 text-xs font-semibold"

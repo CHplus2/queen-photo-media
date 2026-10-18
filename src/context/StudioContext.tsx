@@ -1,58 +1,57 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  Order, 
+import {
+  Order,
   OrderItem,
-  ServiceItem, 
-  RollPaperConfig, 
-  SheetPaperConfig, 
+  ServiceItem,
+  RollPaperConfig,
+  SheetPaperConfig,
   OrderStatus,
   OrderChannel,
   UserRole,
   InventoryItem,
   StockLog,
-  CustomerFeedbackSurvey 
+  CustomerFeedbackSurvey
 } from '../types';
-import { 
-  INITIAL_ORDERS, 
-  INITIAL_SERVICES, 
-  INITIAL_ROLL_CONFIGS, 
+import {
+  INITIAL_SERVICES,
+  INITIAL_ROLL_CONFIGS,
   INITIAL_SHEET_CONFIGS,
   INITIAL_INVENTORY,
   INITIAL_STOCK_LOGS,
-  INITIAL_SURVEYS 
+  INITIAL_SURVEYS
 } from '../data/initialData';
 import { db, auth } from '../lib/firebase';
-import { 
-  collection, 
-  onSnapshot, 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc 
+import {
+  collection,
+  onSnapshot,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc, query, where
 } from 'firebase/firestore';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  sendPasswordResetEmail, 
-  updatePassword, 
-  onAuthStateChanged, 
-  User, 
-  EmailAuthProvider, 
-  reauthenticateWithCredential 
+import {
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+  updatePassword,
+  onAuthStateChanged,
+  User,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from 'firebase/auth';
 import * as OTPAuth from 'otpauth';
 
-export type AppView = 
-  | 'beranda' 
-  | 'layanan' 
+export type AppView =
+  | 'beranda'
+  | 'layanan'
   | 'trending'
-  | 'lacak' 
-  | 'cerita' 
-  | 'pos' 
+  | 'lacak'
+  | 'cerita'
+  | 'pos'
   | 'menu'
   | 'inventory'
-  | 'kalkulator' 
+  | 'kalkulator'
   | 'rekap'
   | 'strategi'
   | 'settings';
@@ -102,7 +101,7 @@ interface StudioContextType {
   submitSurvey: (survey: Omit<CustomerFeedbackSurvey, 'id' | 'createdAt'>) => Promise<string>;
   isSurveyModalOpen: boolean;
   setIsSurveyModalOpen: (open: boolean) => void;
-  
+
   // Menu Management
   addService: (newService: Omit<ServiceItem, 'id'>) => Promise<ServiceItem>;
   updateService: (id: string, updated: Partial<ServiceItem>) => Promise<void>;
@@ -120,7 +119,7 @@ interface StudioContextType {
   changeAdminPassword: (newPass: string) => Promise<void>;
   triggerPasswordReset: (email: string) => Promise<string>;
   resetTwoFactorEmergency: () => Promise<void>;
-  
+
   // Real 3rd-party Authenticator (2FA TOTP)
   isTwoFactorEnabled: boolean;
   twoFactorSecret: string;
@@ -138,18 +137,8 @@ interface StudioContextType {
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
 
 export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Always initialize with cached or INITIAL_ORDERS so the table is NEVER blank!
-  const [orders, setOrders] = useState<Order[]>(() => {
-    try {
-      const saved = localStorage.getItem('queen_photo_orders');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return INITIAL_ORDERS;
-  });
-
+  // Never populate production reports from demonstration data or old browser caches.
+  const [orders, setOrders] = useState<Order[]>([]);
   // Services / Menu Items State
   const [services, setServices] = useState<ServiceItem[]>(() => {
     try {
@@ -161,7 +150,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch {}
     return INITIAL_SERVICES;
   });
-  
+
   const [rollConfigs, setRollConfigs] = useState<RollPaperConfig[]>(() => {
     try {
       const saved = localStorage.getItem('queen_photo_roll_configs');
@@ -202,11 +191,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (saved && saved !== 'heroch94@gmail.com') return saved;
     return 'queenphotomedia@gmail.com';
   });
-  const [adminPassword, setAdminPassword] = useState<string>(() => {
-    const saved = localStorage.getItem('queen_photo_admin_password');
-    if (saved && saved !== 'QueenPhoto1980!') return saved;
-    return 'QueenPhoto1980';
-  });
+  const [adminPassword, setAdminPassword] = useState('');
 
   // 2FA Google Authenticator State (RFC 6238 Base32 Secret)
   const [twoFactorSecret, setTwoFactorSecret] = useState<string>(() => {
@@ -219,7 +204,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Role Separation
   const [activeRole, setActiveRole] = useState<UserRole>('CUSTOMER');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('queen_admin_auth') === 'true';
+    return false;
   });
 
   const [currentView, setCurrentView] = useState<AppView>('beranda');
@@ -252,13 +237,14 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-    return INITIAL_SURVEYS;
+    return [];
   });
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
 
   // Sync state to LocalStorage as reliable cache
   useEffect(() => {
-    localStorage.setItem('queen_photo_orders', JSON.stringify(orders));
+    localStorage.removeItem('queen_photo_orders');
+    localStorage.removeItem('queen_photo_admin_password');
   }, [orders]);
 
   useEffect(() => {
@@ -285,6 +271,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     try {
+      if (!isAdminAuthenticated) return;
       const surveysColRef = collection(db, 'customer_surveys');
       unsubscribe = onSnapshot(
         surveysColRef,
@@ -304,19 +291,25 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, []);
+  }, [isAdminAuthenticated]);
 
   useEffect(() => {
     sessionStorage.setItem('queen_admin_auth', isAdminAuthenticated ? 'true' : 'false');
   }, [isAdminAuthenticated]);
 
-  // Listen to Firebase Auth state
+  // Only a server-issued custom claim can authorize staff access.
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, (usr) => {
+    const unsubAuth = onAuthStateChanged(auth, async (usr) => {
       setFirebaseUser(usr);
-      if (usr && usr.email) {
-        setAdminEmail(usr.email);
-        localStorage.setItem('queen_photo_admin_email', usr.email);
+      setIsAdminAuthenticated(false);
+      setActiveRole('CUSTOMER');
+      if (usr) {
+        const token = await usr.getIdTokenResult();
+        if (token.claims.staff === true) {
+          setAdminEmail(usr.email || '');
+          setIsAdminAuthenticated(true);
+          setActiveRole('ADMIN');
+        }
       }
     });
     return () => unsubAuth();
@@ -327,35 +320,15 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     let unsubscribe: (() => void) | undefined;
 
     try {
-      const ordersColRef = collection(db, 'orders');
+      if (!firebaseUser) { setOrders([]); return; }
+      const ordersColRef = isAdminAuthenticated ? collection(db, 'orders') : query(collection(db, 'orders'), where('ownerUid', '==', firebaseUser.uid));
       unsubscribe = onSnapshot(
         ordersColRef,
         (snapshot) => {
           setIsFirebaseConnected(true);
 
-          if (!snapshot.empty) {
-            const firestoreOrders: Order[] = [];
-            snapshot.forEach((docSnap) => {
-              const data = docSnap.data() as Order;
-              firestoreOrders.push({
-                ...data,
-                id: docSnap.id,
-              });
-            });
-
-            firestoreOrders.sort(
-              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-
-            setOrders(firestoreOrders);
-          } else {
-            // If firestore is empty, seed initial orders
-            INITIAL_ORDERS.forEach(async (initOrd) => {
-              try {
-                await setDoc(doc(db, 'orders', initOrd.id), initOrd);
-              } catch {}
-            });
-          }
+          const firestoreOrders = snapshot.docs.map(snapshot => ({ ...snapshot.data(), id: snapshot.id } as Order));
+          setOrders(firestoreOrders.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
         },
         (error) => {
           console.warn('Firestore subscription fallback:', error);
@@ -369,7 +342,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, []);
+  }, [firebaseUser, isAdminAuthenticated]);
 
   // Connect to Firestore Services / Menu Items in Real-Time
   useEffect(() => {
@@ -390,13 +363,6 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               });
             });
             setServices(firestoreServices);
-          } else {
-            // Seed initial services into Firestore
-            INITIAL_SERVICES.forEach(async (initSvc) => {
-              try {
-                await setDoc(doc(db, 'services', initSvc.id), initSvc);
-              } catch {}
-            });
           }
         },
         (error) => {
@@ -415,6 +381,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Load 2FA status from Firestore admin profile if available
   useEffect(() => {
     try {
+      if (!isAdminAuthenticated) return;
       const adminDocRef = doc(db, 'admins', 'heroch94');
       const unsub = onSnapshot(adminDocRef, (snap) => {
         if (snap.exists()) {
@@ -431,7 +398,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       return () => unsub();
     } catch {}
-  }, []);
+  }, [isAdminAuthenticated]);
 
   // INVENTORY ENGINE: Deduct stock based on order items
   const deductStockForOrder = (order: Order, isManualWalkin = false) => {
@@ -765,7 +732,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (item.id === itemId) {
           const prev = item.currentStock;
           const updatedStock = Number((prev + addedAmount).toFixed(2));
-          
+
           // Compute denominator: user specified target, or expanded to accommodate the new stock
           let updatedMaxStock = item.maxStock;
           if (newMaxCapacity && newMaxCapacity > 0) {
@@ -786,8 +753,8 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           };
           setStockLogs(prevLogs => [log, ...prevLogs]);
           setDoc(doc(db, 'stock_logs', log.id), log).catch(() => {});
-          const updatedItem = { 
-            ...item, 
+          const updatedItem = {
+            ...item,
             currentStock: updatedStock,
             maxStock: updatedMaxStock
           };
@@ -886,7 +853,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)+/g, '') || 'service';
     const id = `${slug}-${Date.now().toString().slice(-4)}`;
-    
+
     const fullService: ServiceItem = {
       ...newService,
       id,
@@ -959,75 +926,39 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // ADD NEW ORDER
   const addOrder = async (orderData: Omit<Order, 'id' | 'createdAt'>): Promise<Order> => {
-    const dateStr = new Date().toISOString().slice(2, 7).replace('-', '');
-    const randomSeq = Math.floor(100 + Math.random() * 900);
-    const newId = `QP-${dateStr}-${randomSeq}`;
-
+    const user = auth.currentUser || (await signInAnonymously(auth)).user;
+    const newId = `QP-${crypto.randomUUID()}`;
     const newOrder: Order = {
       ...orderData,
+      ...(orderData.channel === 'ONLINE' ? { paymentStatus: 'BELUM_BAYAR' as const, orderStatus: 'MENUNGGU_BAYAR' as const } : {}),
+      ownerUid: user.uid,
       id: newId,
       createdAt: new Date().toISOString(),
     };
-
-    setOrders((prev) => [newOrder, ...prev]);
-    deductStockForOrder(newOrder, newOrder.channel === 'WALKIN');
-
-    try {
-      await setDoc(doc(db, 'orders', newId), newOrder);
-    } catch (err) {
-      console.warn('Failed to write order to Firestore, kept in local state:', err);
-    }
-
+    // Do not confirm or consume stock until the durable write succeeds.
+    await setDoc(doc(db, 'orders', newId), cleanForFirestore(newOrder));
+    setOrders(prev => [newOrder, ...prev.filter(order => order.id !== newId)]);
+    if (isAdminAuthenticated) deductStockForOrder(newOrder, newOrder.channel === 'WALKIN');
     return newOrder;
   };
 
-  // UPDATE ORDER STATUS
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
-    const targetOrder = orders.find(o => o.id === orderId);
-    if (!targetOrder) return;
-
-    if (status === 'DIBATALKAN' && targetOrder.orderStatus !== 'DIBATALKAN') {
-      restoreStockForOrder(targetOrder);
-    } else if (targetOrder.orderStatus === 'DIBATALKAN' && status !== 'DIBATALKAN') {
-      deductStockForOrder(targetOrder);
-    }
-
-    setOrders((prev) =>
-      prev.map((ord) => (ord.id === orderId ? { ...ord, orderStatus: status } : ord))
-    );
-
-    try {
-      const orderRef = doc(db, 'orders', orderId);
-      await updateDoc(orderRef, { orderStatus: status });
-    } catch (err) {
-      console.warn('Failed to update status in Firestore:', err);
-    }
+    if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
+    const previous = orders.find(order => order.id === orderId);
+    await updateDoc(doc(db, 'orders', orderId), { orderStatus: status });
+    if (previous && status === 'DIBATALKAN' && previous.orderStatus !== 'DIBATALKAN' && previous.channel === 'WALKIN') restoreStockForOrder(previous);
+    if (previous && previous.orderStatus === 'DIBATALKAN' && status !== 'DIBATALKAN' && previous.channel === 'WALKIN') deductStockForOrder(previous);
+    setOrders(prev => prev.map(order => order.id === orderId ? { ...order, orderStatus: status } : order));
   };
 
-  // UPDATE PAYMENT
   const updateOrderPayment = async (orderId: string, paymentStatus: 'BELUM_BAYAR' | 'LUNAS') => {
-    setOrders((prev) =>
-      prev.map((ord) => (ord.id === orderId ? { ...ord, paymentStatus } : ord))
-    );
-
-    try {
-      const orderRef = doc(db, 'orders', orderId);
-      await updateDoc(orderRef, { paymentStatus });
-    } catch (err) {
-      console.warn('Failed to update payment status in Firestore:', err);
-    }
+    if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
+    await updateDoc(doc(db, 'orders', orderId), { paymentStatus });
+    setOrders(prev => prev.map(order => order.id === orderId ? { ...order, paymentStatus } : order));
   };
 
-  // DELETE ORDER
-  const deleteOrder = async (orderId: string) => {
-    setOrders((prev) => prev.filter((ord) => ord.id !== orderId));
-
-    try {
-      const orderRef = doc(db, 'orders', orderId);
-      await deleteDoc(orderRef);
-    } catch (err) {
-      console.warn('Failed to delete order in Firestore:', err);
-    }
+  const deleteOrder = async (_orderId: string) => {
+    throw new Error('Untuk menjaga riwayat penjualan, ubah status menjadi DIBATALKAN.');
   };
 
   // UPDATE CONFIGS
@@ -1054,124 +985,19 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // REAL AUTHENTICATION ENGINE (FIREBASE AUTH & PRODUCTION CHECKS)
   const loginWithFirebaseAuth = async (emailInput: string, passwordInput: string): Promise<{ requires2FA: boolean }> => {
-    const cleanEmail = emailInput.trim();
-    if (!cleanEmail || !passwordInput) {
-      throw new Error('Email dan password wajib diisi.');
+    const result = await signInWithEmailAndPassword(auth, emailInput.trim(), passwordInput);
+    const token = await result.user.getIdTokenResult(true);
+    if (token.claims.staff !== true) {
+      await signOut(auth);
+      throw new Error('Akun ini belum memiliki izin staf. Hubungi pemilik studio.');
     }
-
-    const isMasterPassword = 
-      passwordInput === adminPassword || 
-      passwordInput === 'QueenPhoto1980' || 
-      passwordInput === 'QueenPhoto1980!';
-    const isOwnerEmail = 
-      cleanEmail.toLowerCase() === adminEmail.toLowerCase() || 
-      cleanEmail.toLowerCase() === 'queenphotomedia@gmail.com' || 
-      cleanEmail.toLowerCase() === 'heroch94@gmail.com';
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, passwordInput);
-      setFirebaseUser(userCredential.user);
-      setAdminEmail(userCredential.user.email || cleanEmail);
-      localStorage.setItem('queen_photo_admin_email', cleanEmail);
-
-      // Check if 2FA Google Authenticator is enabled
-      if (isTwoFactorEnabled) {
-        return { requires2FA: true };
-      } else {
-        setIsAdminAuthenticated(true);
-        setActiveRole('ADMIN');
-        return { requires2FA: false };
-      }
-    } catch (error: any) {
-      const code = error?.code;
-
-      // Auto-fallback: If account does not exist in Firebase Auth yet, auto-register it!
-      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
-        try {
-          const newUserCred = await createUserWithEmailAndPassword(auth, cleanEmail, passwordInput);
-          setFirebaseUser(newUserCred.user);
-          setAdminEmail(newUserCred.user.email || cleanEmail);
-          setAdminPassword(passwordInput);
-          localStorage.setItem('queen_photo_admin_email', cleanEmail);
-          localStorage.setItem('queen_photo_admin_password', passwordInput);
-
-          await setDoc(doc(db, 'admins', 'heroch94'), {
-            email: cleanEmail,
-            isTwoFactorEnabled: false,
-            createdAt: new Date().toISOString()
-          }, { merge: true });
-
-          if (isTwoFactorEnabled) {
-            return { requires2FA: true };
-          } else {
-            setIsAdminAuthenticated(true);
-            setActiveRole('ADMIN');
-            return { requires2FA: false };
-          }
-        } catch {
-          // If auto-registration didn't proceed, check master password fallback for owner
-          if (isMasterPassword && isOwnerEmail) {
-            setAdminEmail(cleanEmail);
-            setIsAdminAuthenticated(true);
-            setActiveRole('ADMIN');
-            sessionStorage.setItem('queen_admin_auth', 'true');
-            return { requires2FA: false };
-          }
-        }
-      }
-
-      // If owner inputs the master password, allow login
-      if (isMasterPassword && isOwnerEmail) {
-        setAdminEmail(cleanEmail);
-        setIsAdminAuthenticated(true);
-        setActiveRole('ADMIN');
-        sessionStorage.setItem('queen_admin_auth', 'true');
-        return { requires2FA: false };
-      }
-
-      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
-        throw new Error('Email atau kata sandi tidak cocok. Silakan periksa kembali.');
-      } else if (code === 'auth/invalid-email') {
-        throw new Error('Format alamat email tidak valid.');
-      } else if (code === 'auth/too-many-requests') {
-        throw new Error('Terlalu banyak percobaan gagal. Akses ditangguhkan sementara demi keamanan.');
-      } else {
-        throw new Error(error?.message || 'Gagal login ke akun admin.');
-      }
-    }
+    setIsAdminAuthenticated(true);
+    setActiveRole('ADMIN');
+    return { requires2FA: false };
   };
 
-  const registerAdminWithFirebaseAuth = async (emailInput: string, passwordInput: string): Promise<void> => {
-    const cleanEmail = emailInput.trim();
-    if (!cleanEmail || !passwordInput) {
-      throw new Error('Email dan password wajib diisi.');
-    }
-
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, passwordInput);
-      setFirebaseUser(userCredential.user);
-      setAdminEmail(userCredential.user.email || cleanEmail);
-      localStorage.setItem('queen_photo_admin_email', cleanEmail);
-      
-      // Save admin profile in Firestore
-      await setDoc(doc(db, 'admins', 'heroch94'), {
-        email: cleanEmail,
-        isTwoFactorEnabled: false,
-        createdAt: new Date().toISOString()
-      }, { merge: true });
-
-      setIsAdminAuthenticated(true);
-      setActiveRole('ADMIN');
-    } catch (error: any) {
-      const code = error?.code;
-      if (code === 'auth/email-already-in-use') {
-        throw new Error('Email ini sudah terdaftar di Firebase. Silakan login langsung menggunakan kata sandi Anda.');
-      } else if (code === 'auth/weak-password') {
-        throw new Error('Kata sandi terlalu pendek. Gunakan minimal 6 karakter kombinasi.');
-      } else {
-        throw new Error(error?.message || 'Gagal mendaftarkan akun admin.');
-      }
-    }
+  const registerAdminWithFirebaseAuth = async (_email: string, _password: string): Promise<void> => {
+    throw new Error('Akun staf harus dibuat oleh pemilik melalui Firebase Admin. Pendaftaran publik dinonaktifkan.');
   };
 
   const logoutAdmin = async () => {
@@ -1186,15 +1012,8 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // PASSWORD CHANGE & RESET
   const changeAdminPassword = async (newPass: string): Promise<void> => {
-    if (auth.currentUser) {
-      try {
-        await updatePassword(auth.currentUser, newPass);
-      } catch (err: any) {
-        console.warn('Firebase updatePassword error:', err);
-      }
-    }
-    setAdminPassword(newPass);
-    localStorage.setItem('queen_photo_admin_password', newPass);
+    if (!auth.currentUser || !isAdminAuthenticated) throw new Error('Silakan login sebagai staf.');
+    await updatePassword(auth.currentUser, newPass);
   };
 
   const triggerPasswordReset = async (emailToReset: string): Promise<string> => {
@@ -1234,7 +1053,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const secretToUse = secretOverride || twoFactorSecret || 'JBSWY3DPEHPK3PXP';
       const cleanSecret = secretToUse.replace(/[\s-]/g, '').toUpperCase();
-      
+
       const totp = new OTPAuth.TOTP({
         issuer: 'Queen Photo Pontianak',
         label: adminEmail || 'queenphotomedia@gmail.com',
@@ -1256,9 +1075,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const enableTwoFactor = async (secret: string, testCode: string): Promise<{ success: boolean; message: string }> => {
     const isValid = verifyTotpCode(testCode, secret);
     if (!isValid) {
-      return { 
-        success: false, 
-        message: 'Kode 6-digit tidak valid. Pastikan waktu jam di HP Anda sudah sinkron (otomatis) dan masukkan kode yang baru sebelum berganti.' 
+      return {
+        success: false,
+        message: 'Kode 6-digit tidak valid. Pastikan waktu jam di HP Anda sudah sinkron (otomatis) dan masukkan kode yang baru sebelum berganti.'
       };
     }
 
@@ -1279,9 +1098,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.warn('Firestore 2fa save fallback:', e);
     }
 
-    return { 
-      success: true, 
-      message: '2FA Google Authenticator berhasil diaktifkan dan terhubung ke HP Anda!' 
+    return {
+      success: true,
+      message: '2FA Google Authenticator berhasil diaktifkan dan terhubung ke HP Anda!'
     };
   };
 
@@ -1332,9 +1151,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         appletId: '009ecc42-7075-40e2-bda1-c76643f190a5',
       });
 
-      for (const ord of orders) {
-        await setDoc(doc(db, 'orders', ord.id), ord);
-      }
+
 
       for (const svc of services) {
         await setDoc(doc(db, 'services', svc.id), svc);
@@ -1344,9 +1161,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         await setDoc(doc(db, 'inventory', invItem.id), invItem);
       }
 
-      for (const sur of surveys) {
-        await setDoc(doc(db, 'customer_surveys', sur.id), sur);
-      }
+
 
       setIsFirebaseConnected(true);
       alert('Berhasil! Seluruh data pesanan, inventaris, menu layanan, dan survei pasar tersimpan permanen di Cloud Firestore.');
@@ -1405,7 +1220,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         submitSurvey,
         isSurveyModalOpen,
         setIsSurveyModalOpen,
-        
+
         // Menu Management
         addService,
         updateService,

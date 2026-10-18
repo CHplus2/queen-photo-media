@@ -1,3 +1,4 @@
+import { businessDate, reportableOrders, salesSummary } from './sales';
 import { Order } from '../types';
 
 export function formatRupiah(amount: number): string {
@@ -38,18 +39,18 @@ export function formatDateTime(isoString: string): string {
 }
 
 export function generateWhatsAppRecapText(orders: Order[], targetMonthly = 30000000): string {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayOrders = orders.filter(o => o.createdAt.startsWith(todayStr));
+  const todayStr = businessDate(new Date());
+  const todayOrders = reportableOrders(orders, todayStr);
   
-  const totalOmset = todayOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const totalOmset = salesSummary(todayOrders).revenue;
   const totalHPP = todayOrders.reduce((sum, o) => sum + o.totalCost, 0);
   const totalProfit = totalOmset - totalHPP;
   const walkinCount = todayOrders.filter(o => o.channel === 'WALKIN').length;
   const onlineCount = todayOrders.filter(o => o.channel === 'ONLINE').length;
 
-  const monthOrders = orders;
-  const monthlyOmset = monthOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const monthlyProfit = monthOrders.reduce((sum, o) => sum + o.totalProfit, 0);
+  const monthOrders = reportableOrders(orders);
+  const monthlyOmset = salesSummary(monthOrders).revenue;
+  const monthlyProfit = salesSummary(monthOrders).profit;
   const targetPct = Math.min(100, Math.round((monthlyOmset / targetMonthly) * 100));
 
   let text = `📸 *LAPORAN PENJUALAN QUEEN PHOTO PONTIANAK*\n`;
@@ -58,7 +59,7 @@ export function generateWhatsAppRecapText(orders: Order[], targetMonthly = 30000
   text += `• Total Transaksi: ${todayOrders.length} pesanan (${walkinCount} Toko / ${onlineCount} Online)\n`;
   text += `• Total Omset: *${formatRupiah(totalOmset)}*\n`;
   text += `• Estimasi HPP Kertas/Bahan: ${formatRupiah(totalHPP)}\n`;
-  text += `• Estimasi Laba Bersih: *${formatRupiah(totalProfit)}* (${totalOmset > 0 ? Math.round((totalProfit / totalOmset) * 100) : 0}%)\n\n`;
+  text += `• Estimasi Laba Kotor: *${formatRupiah(totalProfit)}* (${totalOmset > 0 ? Math.round((totalProfit / totalOmset) * 100) : 0}%)\n\n`;
 
   text += `📈 *PROGRESS OMSET BULAN INI:*\n`;
   text += `• Akumulasi Omset: ${formatRupiah(monthlyOmset)} / Target ${formatRupiah(targetMonthly)} (${targetPct}%)\n`;
@@ -95,4 +96,10 @@ export function createWhatsAppOrderLink(order: Order): string {
   msg += `Untuk konfirmasi atau pertanyaan, balas pesan ini ya Kak!`;
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+}
+
+export function createStudioOrderLink(order: Order): string {
+  const phone = (import.meta.env.VITE_STUDIO_WHATSAPP || '').replace(/[^0-9]/g, '');
+  const text = `Halo Queen Photo, saya ${order.customerName}. Mohon konfirmasi pesanan #${order.id}.\n` + order.items.map(item => `${item.quantity}x ${item.serviceName} (${item.size})${item.photoFileName ? ` — file: ${item.photoFileName}` : ''}`).join('\n') + `\nTotal: ${formatRupiah(order.totalAmount)}. Status pembayaran: ${order.paymentStatus}. Saya akan mengirim foto asli di chat ini.`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }

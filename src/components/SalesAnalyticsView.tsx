@@ -1,3 +1,4 @@
+import { reportableOrders, salesSummary } from '../utils/sales';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { formatRupiah, formatCompactRupiah, generateWhatsAppRecapText } from '../utils/formatters';
@@ -8,13 +9,15 @@ import {
 } from 'lucide-react';
 
 export const SalesAnalyticsView: React.FC = () => {
-  const { orders, monthlyRevenueTarget, setMonthlyRevenueTarget } = useStudio();
+  const { orders: allOrders, monthlyRevenueTarget, setMonthlyRevenueTarget } = useStudio();
   const [copiedRecap, setCopiedRecap] = useState(false);
 
+  const orders = reportableOrders(allOrders);
+  const summary = salesSummary(orders);
   // Financial aggregates
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const totalHPP = orders.reduce((sum, o) => sum + o.totalCost, 0);
-  const totalProfit = orders.reduce((sum, o) => sum + o.totalProfit, 0);
+  const totalRevenue = summary.revenue;
+  const totalHPP = summary.cost;
+  const totalProfit = summary.profit;
   const overallMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
 
   // Pre-COVID target recovery progress
@@ -34,8 +37,10 @@ export const SalesAnalyticsView: React.FC = () => {
   orders.forEach(order => {
     order.items.forEach(it => {
       if (categoryTotals[it.category]) {
-        categoryTotals[it.category].revenue += it.unitPrice * it.quantity;
-        categoryTotals[it.category].profit += (it.unitPrice - it.unitCost) * it.quantity;
+        const merchandiseTotal = order.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+        const allocatedRevenue = merchandiseTotal > 0 ? (order.totalAmount - order.deliveryFee) * it.unitPrice * it.quantity / merchandiseTotal : 0;
+        categoryTotals[it.category].revenue += allocatedRevenue;
+        categoryTotals[it.category].profit += allocatedRevenue - it.unitCost * it.quantity;
         categoryTotals[it.category].count += it.quantity;
       }
     });
@@ -52,13 +57,13 @@ export const SalesAnalyticsView: React.FC = () => {
   };
 
   // Channel breakdown
-  const walkinRevenue = orders.filter(o => o.channel === 'WALKIN').reduce((sum, o) => sum + o.totalAmount, 0);
-  const onlineRevenue = orders.filter(o => o.channel === 'ONLINE').reduce((sum, o) => sum + o.totalAmount, 0);
+  const walkinRevenue = orders.filter(o => o.channel === 'WALKIN').reduce((sum, o) => sum + o.totalAmount - o.deliveryFee, 0);
+  const onlineRevenue = orders.filter(o => o.channel === 'ONLINE').reduce((sum, o) => sum + o.totalAmount - o.deliveryFee, 0);
   const walkinCount = orders.filter(o => o.channel === 'WALKIN').length;
   const onlineCount = orders.filter(o => o.channel === 'ONLINE').length;
 
   const handleShareWA = () => {
-    const recap = generateWhatsAppRecapText(orders, monthlyRevenueTarget);
+    const recap = generateWhatsAppRecapText(allOrders, monthlyRevenueTarget);
     navigator.clipboard.writeText(recap);
     setCopiedRecap(true);
     setTimeout(() => setCopiedRecap(false), 2000);
@@ -78,7 +83,7 @@ export const SalesAnalyticsView: React.FC = () => {
             Rekap Penjualan & Pemulihan Omset Queen Photo
           </h2>
           <p className="text-stone-600 text-xs sm:text-sm mt-0.5">
-            Analisis kontribusi produk foto vs banner, saluran online vs walk-in, dan pencapaian target bulanan.
+            Pesanan lunas dan tidak dibatalkan pada bulan ini (WIB), berdasarkan tanggal pesanan. Ongkir tidak termasuk omzet; laba belum dikurangi biaya operasional.
           </p>
         </div>
 
@@ -146,7 +151,7 @@ export const SalesAnalyticsView: React.FC = () => {
             <span className="font-mono text-lg font-bold text-rose-300">{formatRupiah(totalHPP)}</span>
           </div>
           <div>
-            <span className="text-stone-400 block">Laba Bersih Studio:</span>
+            <span className="text-stone-400 block">Estimasi Laba Kotor Studio:</span>
             <span className="font-mono text-lg font-bold text-emerald-400">{formatRupiah(totalProfit)}</span>
           </div>
           <div>

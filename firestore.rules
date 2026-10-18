@@ -1,44 +1,38 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Services / Menu Items Collection
-    match /services/{serviceId} {
-      allow read, write: if true;
+    function staff() { return request.auth != null && request.auth.token.get('staff', false) == true; }
+    match /services/{id} {
+      allow read: if true;
+      allow write: if staff();
     }
-
-    // Orders collection for Queen Photo
-    match /orders/{orderId} {
-      allow read, write: if true;
+    match /orders/{id} {
+      allow read: if staff() || (request.auth != null && resource.data.ownerUid == request.auth.uid);
+      // Online submissions are requests; staff must check price, files and payment.
+      allow create: if staff() || (request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.id == id
+        && request.resource.data.channel == 'ONLINE'
+        && request.resource.data.paymentStatus == 'BELUM_BAYAR'
+        && request.resource.data.orderStatus == 'MENUNGGU_BAYAR'
+        && request.resource.data.customerName is string
+        && request.resource.data.customerName.size() > 0
+        && request.resource.data.customerPhone is string
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.totalAmount is number
+        && request.resource.data.totalAmount >= 0);
+      allow update, delete: if staff();
     }
-
-    // Studio Settings & Roll Paper Configurations
-    match /studio_settings/{settingId} {
-      allow read, write: if true;
+    match /customer_surveys/{id} {
+      allow read, update, delete: if staff();
+      allow create: if request.resource.data.satisfactionRating is number
+        && request.resource.data.satisfactionRating >= 1
+        && request.resource.data.satisfactionRating <= 5;
     }
-
-    // Inventory & Stock Tracking
-    match /inventory/{itemId} {
-      allow read, write: if true;
-    }
-
-    // Stock Audit Logs
-    match /stock_logs/{logId} {
-      allow read, write: if true;
-    }
-
-    // Admin accounts collection
-    match /admins/{adminId} {
-      allow read, write: if true;
-    }
-
-    // Connection test document
-    match /test/{docId} {
-      allow read, write: if true;
-    }
-
-    match /{document=**} {
-      allow read, write: if false;
+    match /{name}/{id} {
+      allow read, write: if staff() && name in ['studio_settings', 'inventory', 'stock_logs', 'admins', 'test'];
     }
   }
 }

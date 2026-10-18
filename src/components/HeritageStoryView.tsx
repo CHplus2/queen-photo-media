@@ -1,3 +1,4 @@
+import bundledPhoto0 from '../assets/images/queen_photo_products_mug_album_1791784497018.jpg';
 import React from 'react';
 import { useStudio } from '../context/StudioContext';
 import { Camera, History, Sparkles, MapPin, ArrowRight } from 'lucide-react';
@@ -53,7 +54,7 @@ export const HeritageStoryView: React.FC = () => {
         <div className="mb-16 rounded-2xl overflow-hidden border border-stone-200 shadow-lg bg-stone-900 grid grid-cols-1 md:grid-cols-2 items-center">
           <div className="aspect-[4/3] bg-stone-800 overflow-hidden">
             <img
-              src="/src/assets/images/queen_photo_products_mug_album_1791784497018.jpg"
+              src={bundledPhoto0}
               alt="Produk album kenangan dan mug keramik Queen Photo Pontianak"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"

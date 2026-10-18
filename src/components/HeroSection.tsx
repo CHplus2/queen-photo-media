@@ -1,3 +1,4 @@
+import bundledPhoto0 from '../assets/images/queen_photo_modern_studio_1791787204044.jpg';
 import React from 'react';
 import { useStudio } from '../context/StudioContext';
 import { Camera, Sparkles, Truck, Check, ArrowRight, ShieldCheck, Heart } from 'lucide-react';
@@ -75,7 +76,7 @@ export const HeroSection: React.FC = () => {
           <div className="lg:col-span-6 relative">
             <div className="relative rounded-2xl overflow-hidden border border-stone-200 shadow-xl aspect-[16/10] bg-stone-100 group">
               <img
-                src="/src/assets/images/queen_photo_modern_studio_1791787204044.jpg"
+                src={bundledPhoto0}
                 alt="Studio foto modern minimalis Queen Photo Pontianak"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                 referrerPolicy="no-referrer"

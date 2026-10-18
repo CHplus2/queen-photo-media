@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
-import { DeliveryMethod, PaymentMethod } from '../types';
+import { DeliveryMethod, PaymentMethod, Order } from '../types';
 import { PONTIANAK_DISTRICTS } from '../data/initialData';
-import { formatRupiah, createWhatsAppOrderLink } from '../utils/formatters';
-import { 
-  X, ShoppingBag, Trash2, Plus, Minus, ArrowRight, 
-  Truck, MapPin, CreditCard, QrCode, Tag, Check, AlertCircle, Sparkles 
+import { formatRupiah, createStudioOrderLink } from '../utils/formatters';
+import {
+  X, ShoppingBag, Trash2, Plus, Minus, ArrowRight,
+  Truck, MapPin, CreditCard, QrCode, Tag, Check, AlertCircle, Sparkles
 } from 'lucide-react';
 
 export const CartDrawer: React.FC = () => {
-  const { 
-    cart, 
-    removeFromCart, 
-    updateCartItemQuantity, 
-    clearCart, 
-    isCartOpen, 
+  const {
+    cart,
+    removeFromCart,
+    updateCartItemQuantity,
+    clearCart,
+    isCartOpen,
     setIsCartOpen,
     addOrder,
     setActiveTrackingId,
@@ -40,6 +40,7 @@ export const CartDrawer: React.FC = () => {
 
   // Order submission
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [completedOrderId, setCompletedOrderId] = useState<string | null>(null);
 
   if (!isCartOpen) return null;
@@ -70,7 +71,10 @@ export const CartDrawer: React.FC = () => {
   };
 
   const handleCheckout = async () => {
-    if (cart.length === 0) return;
+    if (isSubmitting || cart.length === 0) return;
+    if (deliveryMethod !== 'AMBIL_STUDIO' && !customerAddress.trim()) {
+      alert('Mohon isi alamat pengiriman lengkap.'); return;
+    }
     if (!customerName.trim() || !customerPhone.trim()) {
       alert('Mohon lengkapi Nama Lengkap dan Nomor WhatsApp Anda untuk konfirmasi pesanan.');
       return;
@@ -94,16 +98,17 @@ export const CartDrawer: React.FC = () => {
         totalCost,
         totalProfit,
         paymentMethod,
-        paymentStatus: paymentMethod === 'TUNAI_KASIR' ? 'BELUM_BAYAR' : 'LUNAS',
-        orderStatus: 'ANTREAN_DESAIN',
+        paymentStatus: 'BELUM_BAYAR',
+        orderStatus: 'MENUNGGU_BAYAR',
         staffNotes: `Checkout Keranjang (${cart.length} item): ${summaryItems} · Diskon: ${appliedDiscount > 0 ? '10%' : 'Tidak ada'}`,
-        trackingNumber: deliveryMethod === 'GRAB_EXPRESS_PONTIANAK' ? `GRAB-PTK-${Math.floor(10000 + Math.random() * 90000)}` : undefined,
+
       });
 
+      setCompletedOrder(newOrder);
       setCompletedOrderId(newOrder.id);
       clearCart();
     } catch (err) {
-      alert('Terjadi kendala saat memproses pesanan. Silakan coba kembali.');
+      alert('Pesanan belum tersimpan. Keranjang tetap aman. Periksa koneksi lalu coba kembali.');
     } finally {
       setIsSubmitting(false);
     }
@@ -115,13 +120,13 @@ export const CartDrawer: React.FC = () => {
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex justify-end bg-stone-950/70 backdrop-blur-sm transition-all"
       onClick={(e) => {
         if (e.target === e.currentTarget) closeDrawer();
       }}
     >
-      <div 
+      <div
         className="relative w-full max-w-xl bg-white h-full shadow-2xl border-l border-stone-200 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
         role="dialog"
         aria-modal="true"
@@ -162,7 +167,7 @@ export const CartDrawer: React.FC = () => {
               <span className="text-xs text-stone-500 font-mono">NOMOR INVOICE GABUNGAN</span>
               <p className="text-2xl font-bold font-mono text-stone-900">#{completedOrderId}</p>
               <p className="text-stone-600 text-xs sm:text-sm mt-2 max-w-md mx-auto">
-                Semua item di keranjang Anda telah digabung menjadi 1 pesanan resmi di antrean cetak Queen Photo Studio Pontianak.
+                Pesanan tersimpan. Kirim foto asli dan bukti pembayaran ke studio melalui WhatsApp. Pembayaran akan diperiksa staf sebelum pesanan diproses.
               </p>
             </div>
 
@@ -180,7 +185,7 @@ export const CartDrawer: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-stone-500">Total Pembayaran:</span>
                 <strong className="font-mono text-amber-900 font-bold text-sm">
-                  {formatRupiah(totalAmount)}
+                  {formatRupiah(completedOrder?.totalAmount ?? totalAmount)}
                 </strong>
               </div>
             </div>
@@ -207,28 +212,12 @@ export const CartDrawer: React.FC = () => {
 
             <div className="pt-2 flex flex-col gap-2.5 max-w-md mx-auto">
               <a
-                href={createWhatsAppOrderLink({
-                  id: completedOrderId,
-                  customerName,
-                  customerPhone,
-                  channel: 'ONLINE',
-                  deliveryMethod,
-                  deliveryFee,
-                  items: cart,
-                  subtotal,
-                  totalAmount,
-                  totalCost,
-                  totalProfit,
-                  paymentMethod,
-                  paymentStatus: 'LUNAS',
-                  orderStatus: 'ANTREAN_DESAIN',
-                  createdAt: new Date().toISOString(),
-                })}
+                href={completedOrder ? createStudioOrderLink(completedOrder) : '#'}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm"
               >
-                <span>Konfirmasi via WhatsApp Studio</span>
+                <span>{import.meta.env.VITE_STUDIO_WHATSAPP ? 'Kirim Foto & Konfirmasi ke Studio' : 'Bagikan Pesanan via WhatsApp (pilih kontak studio)'}</span>
                 <ArrowRight className="w-4 h-4" />
               </a>
 
@@ -268,7 +257,7 @@ export const CartDrawer: React.FC = () => {
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-            
+
             {/* List of Cart Items */}
             <div className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-stone-200">
@@ -284,16 +273,16 @@ export const CartDrawer: React.FC = () => {
               </div>
 
               {cart.map((item) => (
-                <div 
+                <div
                   key={item.id}
                   className="bg-stone-50 rounded-xl border border-stone-200 p-3.5 flex flex-col sm:flex-row gap-3 items-start justify-between transition-all hover:border-amber-400"
                 >
                   <div className="flex gap-3 min-w-0">
                     {item.photoUrl ? (
-                      <img 
-                        src={item.photoUrl} 
-                        alt={item.serviceName} 
-                        className="w-14 h-14 rounded-lg object-cover border border-stone-300 shrink-0" 
+                      <img
+                        src={item.photoUrl}
+                        alt={item.serviceName}
+                        className="w-14 h-14 rounded-lg object-cover border border-stone-300 shrink-0"
                       />
                     ) : (
                       <div className="w-14 h-14 rounded-lg bg-stone-200 text-stone-500 flex flex-col items-center justify-center shrink-0 text-[10px] font-mono">
@@ -421,10 +410,10 @@ export const CartDrawer: React.FC = () => {
                 Pilihan Pengiriman
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label 
+                <label
                   className={`p-3 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
-                    deliveryMethod === 'GRAB_EXPRESS_PONTIANAK' 
-                      ? 'border-amber-400 bg-amber-50/50 ring-1 ring-amber-400/50' 
+                    deliveryMethod === 'GRAB_EXPRESS_PONTIANAK'
+                      ? 'border-amber-400 bg-amber-50/50 ring-1 ring-amber-400/50'
                       : 'border-stone-200 hover:border-stone-300'
                   }`}
                 >
@@ -444,10 +433,10 @@ export const CartDrawer: React.FC = () => {
                   </div>
                 </label>
 
-                <label 
+                <label
                   className={`p-3 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
-                    deliveryMethod === 'AMBIL_STUDIO' 
-                      ? 'border-amber-400 bg-amber-50/50 ring-1 ring-amber-400/50' 
+                    deliveryMethod === 'AMBIL_STUDIO'
+                      ? 'border-amber-400 bg-amber-50/50 ring-1 ring-amber-400/50'
                       : 'border-stone-200 hover:border-stone-300'
                   }`}
                 >
@@ -586,41 +575,9 @@ export const CartDrawer: React.FC = () => {
                 </button>
               </div>
 
-              {/* QRIS / Transfer details */}
-              {paymentMethod === 'QRIS' && (
-                <div className="p-4 bg-stone-900 text-stone-100 rounded-xl space-y-2 text-xs text-center">
-                  <p className="text-amber-300 font-bold uppercase tracking-wider text-[11px]">
-                    Scan QRIS Studio Queen Photo
-                  </p>
-                  <div className="w-32 h-32 bg-white rounded-lg mx-auto p-1.5 flex items-center justify-center">
-                    <img 
-                      src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=00020101021226610016ID.CO.QRIS.WWW01189360099800000000005204581253033605802ID5920QUEEN%20PHOTO%20STUDIO6009PONTIANAK6304A8B9" 
-                      alt="QRIS Queen Photo Studio"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <p className="text-[10px] text-stone-400">
-                    Bisa di-scan dari BCA, Mandiri, BRI, BNI, GoPay, OVO, ShopeePay, DANA.
-                  </p>
-                </div>
-              )}
-
-              {paymentMethod === 'TRANSFER_BCA' && (
-                <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1">
-                  <span className="text-stone-500">Nomor Rekening BCA Studio:</span>
-                  <div className="flex items-center justify-between font-mono font-bold text-stone-900 text-sm">
-                    <span>029 188 9800</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyAccount('0291889800')}
-                      className="text-xs text-amber-700 hover:underline font-sans font-medium"
-                    >
-                      {copiedAccount ? 'Tersalin ✓' : 'Salin Rekening'}
-                    </button>
-                  </div>
-                  <span className="text-[11px] text-stone-500 block">a.n. Queen Photo Studio Pontianak</span>
-                </div>
-              )}
+              <p className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+                Pilihan ini belum merupakan pembayaran. Setelah pesanan tersimpan, staf akan mengonfirmasi harga dan mengirim QRIS atau rekening resmi melalui WhatsApp. Jangan transfer sebelum konfirmasi.
+              </p>
             </div>
 
             {/* Order Cost Summary */}
@@ -644,7 +601,7 @@ export const CartDrawer: React.FC = () => {
               <div className="pt-2 border-t border-stone-300 flex justify-between items-baseline font-bold text-stone-900 text-sm">
                 <span>Total Tagihan:</span>
                 <span className="font-mono text-base sm:text-lg text-amber-900">
-                  {formatRupiah(totalAmount)}
+                  {formatRupiah(completedOrder?.totalAmount ?? totalAmount)}
                 </span>
               </div>
             </div>

@@ -8,10 +8,9 @@ export const OrderTrackingView: React.FC = () => {
   const { orders, activeTrackingId, setActiveTrackingId, setIsOrderModalOpen } = useStudio();
   const [searchInput, setSearchInput] = useState(activeTrackingId || '');
 
-  const matchedOrder = orders.find(
-    o => o.id.toLowerCase() === searchInput.trim().toLowerCase() ||
-         o.customerPhone.replace(/[^0-9]/g, '').includes(searchInput.replace(/[^0-9]/g, ''))
-  );
+  const matchedOrder = searchInput.trim() ? orders.find(
+    o => o.id.toLowerCase() === searchInput.trim().toLowerCase()
+  ) : undefined;
 
   const getStepStatus = (currentStatus: OrderStatus, step: number) => {
     const statusOrder: OrderStatus[] = [
@@ -45,7 +44,7 @@ export const OrderTrackingView: React.FC = () => {
           Lacak Status Pesanan Foto Anda
         </h2>
         <p className="text-stone-600 text-sm max-w-md mx-auto">
-          Masukkan Nomor Pesanan (misal: QP-2610-001) atau nomor WhatsApp yang Anda gunakan saat memesan.
+          Masukkan Nomor Pesanan (misal: QP-2610-001) di perangkat yang digunakan saat memesan. Untuk bantuan dari perangkat lain, hubungi studio.
         </p>
       </div>
 

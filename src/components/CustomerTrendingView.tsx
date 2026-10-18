@@ -1,3 +1,4 @@
+import bundledPhoto0 from '../assets/images/queen_photo_genz_photostrips_1791787249531.jpg';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { Sparkles, Heart, Camera, ArrowRight, CheckCircle2, Star, ShoppingBag, Check } from 'lucide-react';
@@ -73,7 +74,7 @@ export const CustomerTrendingView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="rounded-2xl overflow-hidden border border-stone-200 shadow-md aspect-[4/3] bg-stone-100">
             <img
-              src="/src/assets/images/queen_photo_genz_photostrips_1791787249531.jpg"
+              src={bundledPhoto0}
               alt="Koleksi photostrip dan polaroid aesthetic Queen Photo Pontianak"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
