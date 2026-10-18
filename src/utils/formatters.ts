@@ -1,5 +1,5 @@
 import { businessDate, reportableOrders, salesSummary } from './sales';
-import { Order } from '../types';
+import { Order, PaymentMethod } from '../types';
 
 export function formatRupiah(amount: number): string {
   return new Intl.NumberFormat('id-ID', {
@@ -91,7 +91,7 @@ export function createWhatsAppOrderLink(order: Order): string {
   let msg = `Halo ${order.customerName}, terima kasih telah memesan di *Queen Photo Pontianak*! 📸\n\n`;
   msg += `Nomor Pesanan: *#${order.id}*\n`;
   msg += `Status: *${order.orderStatus.replace(/_/g, ' ')}*\n`;
-  msg += `Metode Pembayaran: *${order.paymentMethod.replace(/_/g, ' ')}* (${order.paymentStatus})\n`;
+  msg += `Metode Pembayaran: *${formatPaymentMethod(order.paymentMethod)}* (${order.paymentStatus})\n`;
   msg += `Metode Pengiriman: *${order.deliveryMethod === 'GRAB_EXPRESS_PONTIANAK' ? 'GrabExpress Pontianak' : order.deliveryMethod === 'AMBIL_STUDIO' ? 'Ambil di Studio (Gajah Mada)' : 'Ekspedisi Kalbar'}*\n\n`;
   msg += `*Rincian Pesanan:*\n`;
   order.items.forEach((item) => {
@@ -122,4 +122,16 @@ export function createStudioOrderLink(order: Order): string {
       .join('\n') +
     `\nTotal: ${formatRupiah(order.totalAmount)}. Status pembayaran: ${order.paymentStatus}. Saya akan mengirim foto asli di chat ini.`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
+export function formatPaymentMethod(method: PaymentMethod): string {
+  const labels: Record<PaymentMethod, string> = {
+    TUNAI_KASIR: 'Tunai di kasir',
+    QRIS: 'QRIS',
+    TRANSFER_BANK: 'Transfer bank',
+    TRANSFER_BCA: 'Transfer BCA',
+    TRANSFER_MANDIRI: 'Transfer Mandiri',
+    TRANSFER_BRI: 'Transfer BRI',
+  };
+  return labels[method] || method;
 }

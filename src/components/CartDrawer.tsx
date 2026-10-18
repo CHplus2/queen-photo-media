@@ -158,7 +158,7 @@ export const CartDrawer: React.FC = () => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-title"
-        className="bg-white w-full max-w-[560px] h-dvh flex flex-col shadow-2xl"
+        className={`qp-checkout bg-white w-full max-w-[560px] h-dvh flex flex-col shadow-2xl ${step === 'details' && !completed && cart.length ? 'qp-checkout-details' : ''}`}
       >
         <div className="qp-dialog-header">
           <div>
@@ -570,7 +570,7 @@ export const CartDrawer: React.FC = () => {
                     {(
                       [
                         ['QRIS', 'QRIS / e-wallet'],
-                        ['TRANSFER_BCA', 'Transfer bank'],
+                        ['TRANSFER_BANK', 'Transfer bank'],
                         ['TUNAI_KASIR', 'Bayar di kasir'],
                       ] as const
                     ).map(([id, label]) => (
@@ -607,6 +607,32 @@ export const CartDrawer: React.FC = () => {
         </div>
         {!completed && cart.length > 0 && (
           <div className="qp-dialog-footer space-y-4">
+            {step === 'details' && (
+              <div className="hidden lg:block border-b border-stone-200 pb-5 mb-5">
+                <h3 className="text-lg font-semibold">Ringkasan pesanan</h3>
+                <ul className="mt-5 space-y-4">
+                  {cart.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex justify-between gap-4 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <strong className="font-medium">
+                          {item.quantity}× {item.serviceName}
+                        </strong>
+                        <p className="text-xs text-stone-500 mt-1">
+                          {[item.size, item.frame].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                      <span className="shrink-0">
+                        {formatRupiah(item.unitPrice * item.quantity)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <dl className="text-sm space-y-2">
               <div className="flex justify-between">
                 <dt className="text-stone-500">Subtotal layanan</dt>

@@ -1,3 +1,4 @@
+import { ServiceArtwork } from './ServiceArtwork';
 import React, { useEffect, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { useDialog } from '../hooks/useDialog';
@@ -105,7 +106,7 @@ export const OrderConfiguratorModal: React.FC = () => {
       }}
     >
       <section
-        className="qp-dialog"
+        className="qp-dialog qp-service-dialog"
         ref={ref}
         tabIndex={-1}
         role="dialog"
@@ -128,6 +129,10 @@ export const OrderConfiguratorModal: React.FC = () => {
             <X size={20} />
           </button>
         </div>
+        <ServiceArtwork
+          category={service.category}
+          className="qp-service-art"
+        />
         <form
           id="configure-form"
           onSubmit={add}

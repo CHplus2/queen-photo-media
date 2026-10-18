@@ -11,6 +11,7 @@ import { OrderTrackingView } from './components/OrderTrackingView';
 import { CustomerTrendingView } from './components/CustomerTrendingView';
 import { HeritageStoryView } from './components/HeritageStoryView';
 import { MarketStrategyView } from './components/MarketStrategyView';
+import { OwnerDashboard } from './components/OwnerDashboard';
 import { AdminPosView } from './components/AdminPosView';
 import { InventoryView } from './components/InventoryView';
 import { AdminMenuView } from './components/AdminMenuView';
@@ -42,7 +43,9 @@ const MainAppContent: React.FC = () => {
       trending: 'Photostrip',
       lacak: 'Lacak pesanan',
       cerita: 'Tentang kami',
-      pos: 'Kasir & pesanan',
+      pos: 'Kasir',
+      orders: 'Pesanan',
+      supervision: 'Ringkasan toko',
       rekap: 'Laporan penjualan',
     };
     document.title = `${titles[currentView] || 'Ruang kerja studio'} — Queen Photo`;
@@ -86,7 +89,9 @@ const MainAppContent: React.FC = () => {
             {currentView === 'cerita' && <HeritageStoryView />}
 
             {/* Fallbacks if role switched */}
-            {(currentView === 'pos' ||
+            {(currentView === 'orders' ||
+              currentView === 'supervision' ||
+              currentView === 'pos' ||
               currentView === 'menu' ||
               currentView === 'inventory' ||
               currentView === 'kalkulator' ||
@@ -110,6 +115,14 @@ const MainAppContent: React.FC = () => {
                 onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
               />
             )}
+
+            {currentView === 'orders' && (
+              <AdminPosView
+                initialTab="queue"
+                onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
+              />
+            )}
+            {currentView === 'supervision' && <OwnerDashboard />}
 
             {currentView === 'menu' && <AdminMenuView />}
 

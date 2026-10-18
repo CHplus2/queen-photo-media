@@ -18,12 +18,11 @@ const customerLinks: [AppView, string][] = [
   ['cerita', 'Tentang kami'],
 ];
 const staffLinks: [AppView, string][] = [
-  ['pos', 'Kasir & pesanan'],
-  ['menu', 'Layanan'],
+  ['pos', 'Kasir'],
+  ['orders', 'Pesanan'],
+  ['supervision', 'Ringkasan toko'],
   ['inventory', 'Inventaris'],
-  ['kalkulator', 'Kalkulator biaya'],
-  ['rekap', 'Laporan penjualan'],
-  ['strategi', 'Riset pelanggan'],
+  ['rekap', 'Laporan'],
   ['settings', 'Pengaturan'],
 ];
 export const Header: React.FC = () => {

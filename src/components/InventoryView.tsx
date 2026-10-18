@@ -1,3 +1,4 @@
+import { MaterialSetup } from './MaterialSetup';
 import { useDialog } from '../hooks/useDialog';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
@@ -22,10 +23,12 @@ import {
 export const InventoryView: React.FC = () => {
   const { inventory, stockLogs, restockItem } = useStudio();
 
+  const [restockBusy, setRestockBusy] = useState(false);
+  const [restockError, setRestockError] = useState('');
   // Restock modal state
   const [selectedRestockItem, setSelectedRestockItem] =
     useState<InventoryItem | null>(null);
-  const [restockAmount, setRestockAmount] = useState<number>(65);
+  const [restockAmount, setRestockAmount] = useState<number>(0);
   const [restockCapacity, setRestockCapacity] = useState<number>(65);
   const [restockReason, setRestockReason] = useState<string>(
     'Pemasangan roll / pengadaan baru',
@@ -34,12 +37,6 @@ export const InventoryView: React.FC = () => {
   const modalRef = useDialog<HTMLDivElement>(Boolean(selectedRestockItem), () =>
     setSelectedRestockItem(null),
   );
-
-  // Interactive Live Cutter Simulator state
-  const [simProduct, setSimProduct] = useState<
-    '4R' | 'PHOTOSTRIP' | '16R_KANVAS' | 'PAS_FOTO'
-  >('4R');
-  const [simQty, setSimQty] = useState<number>(10);
 
   // Filter logs state
   const [logFilter, setLogFilter] = useState<
@@ -51,81 +48,42 @@ export const InventoryView: React.FC = () => {
   );
 
   const handleOpenRestock = (item: InventoryItem) => {
+    setRestockError('');
     setSelectedRestockItem(item);
-    let amount = 50;
-    if (item.type === 'ROLL') {
-      amount = item.maxStock; // e.g. 65 meters
-      setRestockReason('Pemasangan 1 roll kertas baru di mesin minilab');
-    } else {
-      amount = 50;
-      setRestockReason('Pengadaan stok bahan baru dari supplier');
-    }
-    setRestockAmount(amount);
-    // Auto-calculate new denominator so stock never exceeds denominator!
-    const projectedStock = Number((item.currentStock + amount).toFixed(1));
-    setRestockCapacity(Math.max(item.maxStock, projectedStock));
+    setRestockAmount(0);
+    setRestockReason('Penerimaan bahan baru');
+    setRestockCapacity(item.maxStock);
   };
 
-  const handleConfirmRestock = (e: React.FormEvent) => {
+  const handleConfirmRestock = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRestockItem || restockAmount <= 0) return;
+    if (!selectedRestockItem || restockAmount <= 0 || restockBusy) return;
+    setRestockBusy(true);
 
-    restockItem(
-      selectedRestockItem.id,
-      restockAmount,
-      restockReason,
-      restockCapacity,
-    );
-    setSelectedRestockItem(null);
+    try {
+      await restockItem(
+        selectedRestockItem.id,
+        restockAmount,
+        restockReason,
+        restockCapacity,
+      );
+      setSelectedRestockItem(null);
+    } catch (error) {
+      setRestockError(
+        error instanceof Error ? error.message : 'Stok belum tersimpan.',
+      );
+    } finally {
+      setRestockBusy(false);
+    }
   };
-
-  // Cutter Simulator calculations
-  const minilabRoll = inventory.find((i) => i.id === 'inv-roll-minilab-6inch');
-  const minilabStockMeters = minilabRoll?.currentStock || 58.4;
-
-  let simCutLengthMeters = 0;
-  let simCutLengthCm = 0;
-  let simTargetItemName = '';
-  let simCurrentStockMeters = 0;
-
-  if (simProduct === '4R') {
-    simCutLengthMeters = Number((0.102 * simQty).toFixed(3));
-    simCutLengthCm = Number((10.2 * simQty).toFixed(1));
-    simTargetItemName = 'Kertas Roll Foto Minilab 6" (15.2 cm)';
-    simCurrentStockMeters = minilabStockMeters;
-  } else if (simProduct === 'PHOTOSTRIP') {
-    simCutLengthMeters = Number((0.051 * simQty).toFixed(3));
-    simCutLengthCm = Number((5.08 * simQty).toFixed(1));
-    simTargetItemName = 'Kertas Roll Foto Minilab 6" (15.2 cm)';
-    simCurrentStockMeters = minilabStockMeters;
-  } else if (simProduct === '16R_KANVAS') {
-    simCutLengthMeters = Number((0.4 * simQty).toFixed(3));
-    simCutLengthCm = Number((40 * simQty).toFixed(1));
-    const canvasRoll = inventory.find(
-      (i) => i.id === 'inv-roll-canvas-plotter-24inch',
-    );
-    simTargetItemName = 'Kertas Roll Kanvas Plotter 24" (61 cm)';
-    simCurrentStockMeters = canvasRoll?.currentStock || 28.5;
-  } else if (simProduct === 'PAS_FOTO') {
-    simCutLengthMeters = simQty;
-    simCutLengthCm = 0;
-    const a4 = inventory.find((i) => i.id === 'inv-sheet-a4-pasfoto');
-    simTargetItemName = 'Kertas Foto Lembaran A4 (Per Lembar)';
-    simCurrentStockMeters = a4?.currentStock || 240;
-  }
-
-  const remainingAfterSim = Math.max(
-    0,
-    Number((simCurrentStockMeters - simCutLengthMeters).toFixed(2)),
-  );
 
   // Filtered logs
   const filteredLogs = stockLogs.filter((log) => {
-    if (logFilter === 'DEDUCT')
-      return log.changeAmount < 0 && !log.reason.includes('[RESTORE]');
-    if (logFilter === 'RESTORE') return log.reason.includes('[RESTORE]');
-    if (logFilter === 'RESTOCK')
-      return log.changeAmount > 0 && !log.reason.includes('[RESTORE]');
+    const restored =
+      log.reason.includes('Pembatalan:') || log.reason.includes('[RESTORE]');
+    if (logFilter === 'DEDUCT') return log.changeAmount < 0;
+    if (logFilter === 'RESTORE') return restored;
+    if (logFilter === 'RESTOCK') return log.changeAmount > 0 && !restored;
     return true;
   });
 
@@ -141,8 +99,9 @@ export const InventoryView: React.FC = () => {
             Manajemen Stok Kertas Roll, Lembaran & Merchandise
           </h2>
           <p className="text-stone-600 text-xs sm:text-sm mt-0.5">
-            Otomatis terpotong saat pesanan masuk (Online & Kasir) dan otomatis
-            dikembalikan jika pesanan dibatalkan.
+            Saldo bersama dari database. Pemotongan mengikuti pemakaian layanan
+            yang sudah diatur; pembatalan membedakan bahan terpakai dan belum
+            terpakai.
           </p>
         </div>
 
@@ -157,137 +116,7 @@ export const InventoryView: React.FC = () => {
         )}
       </div>
 
-      {/* Mechanics Explanation Box: The Photo Paper Roll Cutting Mechanics */}
-      <div className="p-5 bg-stone-900 text-stone-100 rounded-2xl border border-stone-800 shadow-sm space-y-3">
-        <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider">
-          <Scissors className="w-4 h-4" />
-          <span>
-            Cara Kerja Pemotongan Kertas Roll di Mesin Minilab Queen Photo
-            (Pontianak)
-          </span>
-        </div>
-        <p className="text-stone-300 text-xs sm:text-sm leading-relaxed">
-          Kertas foto minilab berupa{' '}
-          <strong>1 gulungan roll panjang (65 meter)</strong> dengan lebar tetap
-          (15.2 cm / 6-inci). Saat pesanan dicetak, pisau pemotong guillotine
-          otomatis di dalam mesin memotong kertas berdasarkan panjang ukuran
-          foto:
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
-          <div className="p-3 bg-stone-800 rounded-xl border border-stone-700">
-            <p className="font-bold text-amber-200">Foto 4R (10.2 x 15.2 cm)</p>
-            <p className="text-stone-300 mt-0.5">
-              Mesin memotong <strong>10.2 cm (0.102 m)</strong> per lembar. 1
-              roll utuh cukup untuk ~637 lembar foto 4R.
-            </p>
-          </div>
-          <div className="p-3 bg-stone-800 rounded-xl border border-stone-700">
-            <p className="font-bold text-amber-200">
-              Photostrip 2x6 (5.08 x 15.2 cm)
-            </p>
-            <p className="text-stone-300 mt-0.5">
-              Mesin memotong <strong>5.08 cm (0.051 m)</strong> per cetakan.
-              Sangat hemat bahan.
-            </p>
-          </div>
-          <div className="p-3 bg-stone-800 rounded-xl border border-stone-700">
-            <p className="font-bold text-amber-200">Kanvas 16R (40 x 50 cm)</p>
-            <p className="text-stone-300 mt-0.5">
-              Mesin plotter memotong <strong>40 cm (0.40 m)</strong> dari roll
-              kanvas lebar 61 cm.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* INTERACTIVE CUTTER SIMULATOR WIDGET */}
-      <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-amber-200/80">
-          <div className="flex items-center gap-2 text-stone-900 font-bold text-sm">
-            <Calculator className="w-4 h-4 text-amber-800" />
-            <span>
-              Kalkulator & Simulator Pemotong Mesin Roll (Live Cutter)
-            </span>
-          </div>
-          <span className="text-xs text-stone-500 font-medium">
-            Simulasi sisa panjang roll di mesin saat mencetak berbagai variasi
-            foto
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center text-xs">
-          <div>
-            <label
-              className="block font-semibold text-stone-700 mb-1"
-              htmlFor="inventoryview-field-1"
-            >
-              Pilih Varian Foto:
-            </label>
-            <select
-              id="inventoryview-field-1"
-              value={simProduct}
-              onChange={(e) => setSimProduct(e.target.value as any)}
-              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-xs font-semibold"
-            >
-              <option value="4R">
-                Cetak 4R (10.2 x 15.2 cm) - Roll Minilab 6"
-              </option>
-              <option value="PHOTOSTRIP">
-                Photostrip 2x6 (5.08 x 15.2 cm) - Roll Minilab 6"
-              </option>
-              <option value="16R_KANVAS">
-                Cetak Kanvas 16R (40 x 50 cm) - Roll Plotter 24"
-              </option>
-              <option value="PAS_FOTO">
-                Pas Foto Resmi - Kertas Lembaran A4
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              className="block font-semibold text-stone-700 mb-1"
-              htmlFor="inventoryview-field-2"
-            >
-              Jumlah Lembar / Qty Cetak:
-            </label>
-            <input
-              id="inventoryview-field-2"
-              type="number"
-              min="1"
-              max="500"
-              value={simQty}
-              onChange={(e) =>
-                setSimQty(Math.max(1, parseInt(e.target.value) || 1))
-              }
-              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-xs tabular-nums font-bold"
-            />
-          </div>
-
-          {/* Result card */}
-          <div className="p-3 bg-white rounded-xl border border-amber-300/80 shadow-xs space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 block">
-              Hasil Potongan Otomatis Mesin:
-            </span>
-            <div className="flex justify-between items-baseline">
-              <span className="text-stone-600">Panjang Dipotong:</span>
-              <strong className="tabular-nums text-sm text-stone-900">
-                {simProduct === 'PAS_FOTO'
-                  ? `${simQty} Lembar A4`
-                  : `${simCutLengthCm} cm (${simCutLengthMeters} meter)`}
-              </strong>
-            </div>
-            <div className="flex justify-between items-baseline text-[11px]">
-              <span className="text-stone-500">Sisa Roll di Mesin:</span>
-              <strong className="tabular-nums text-emerald-700">
-                {simProduct === 'PAS_FOTO'
-                  ? `${remainingAfterSim} Lembar`
-                  : `${remainingAfterSim} meter`}
-              </strong>
-            </div>
-          </div>
-        </div>
-      </div>
+      <MaterialSetup />
 
       {/* INVENTORY ITEMS GRID */}
       <div className="space-y-4">
@@ -563,6 +392,11 @@ export const InventoryView: React.FC = () => {
               </button>
             </div>
 
+            {restockError && (
+              <p role="alert" className="qp-error mx-5 mt-4">
+                {restockError}
+              </p>
+            )}
             <form
               onSubmit={handleConfirmRestock}
               className="qp-dialog-content space-y-4 text-sm"
@@ -665,6 +499,7 @@ export const InventoryView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={restockBusy}
                   className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />

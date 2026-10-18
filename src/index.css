@@ -406,3 +406,54 @@
     width: calc(100% - 40px);
   }
 }
+
+.qp-service-art {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .qp-service-dialog {
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .qp-service-dialog > .qp-dialog-header {
+    grid-column: 1 / -1;
+  }
+  .qp-service-dialog > .qp-service-art {
+    display: block;
+    grid-column: 1;
+    grid-row: 2 / 4;
+    min-height: 440px;
+  }
+  .qp-service-dialog > .qp-dialog-content {
+    grid-column: 2;
+    min-height: 0;
+  }
+  .qp-service-dialog > .qp-dialog-footer {
+    grid-column: 2;
+  }
+  .qp-checkout-details {
+    max-width: 1080px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  .qp-checkout-details > .qp-dialog-header,
+  .qp-checkout-details > ol {
+    grid-column: 1 / -1;
+  }
+  .qp-checkout-details > .qp-dialog-content {
+    grid-column: 1;
+    grid-row: 3;
+    min-height: 0;
+  }
+  .qp-checkout-details > .qp-dialog-footer {
+    grid-column: 2;
+    grid-row: 3;
+    border-left: 1px solid #dfe5de;
+    border-top: 0;
+    overflow-y: auto;
+    padding: 32px;
+  }
+}

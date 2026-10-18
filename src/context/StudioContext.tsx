@@ -1,3 +1,12 @@
+import {
+  saveWalkin,
+  changeOrderStatus,
+  verifyOrderPayment,
+  addStock,
+  createMaterial,
+  reconcileMaterialUsage,
+  recordStocktake,
+} from '../lib/staffOperations';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Order,
@@ -10,7 +19,7 @@ import {
   UserRole,
   InventoryItem,
   StockLog,
-  CustomerFeedbackSurvey
+  CustomerFeedbackSurvey,
 } from '../types';
 import {
   INITIAL_SERVICES,
@@ -18,7 +27,7 @@ import {
   INITIAL_SHEET_CONFIGS,
   INITIAL_INVENTORY,
   INITIAL_STOCK_LOGS,
-  INITIAL_SURVEYS
+  INITIAL_SURVEYS,
 } from '../data/initialData';
 import { db, auth } from '../lib/firebase';
 import {
@@ -27,7 +36,9 @@ import {
   doc,
   setDoc,
   updateDoc,
-  deleteDoc, query, where
+  deleteDoc,
+  query,
+  where,
 } from 'firebase/firestore';
 import {
   signInAnonymously,
@@ -38,7 +49,7 @@ import {
   onAuthStateChanged,
   User,
   EmailAuthProvider,
-  reauthenticateWithCredential
+  reauthenticateWithCredential,
 } from 'firebase/auth';
 import * as OTPAuth from 'otpauth';
 
@@ -48,6 +59,8 @@ export type AppView =
   | 'trending'
   | 'lacak'
   | 'cerita'
+  | 'orders'
+  | 'supervision'
   | 'pos'
   | 'menu'
   | 'inventory'
@@ -62,6 +75,13 @@ interface StudioContextType {
   rollConfigs: RollPaperConfig[];
   sheetConfigs: SheetPaperConfig[];
   inventory: InventoryItem[];
+  inventoryReady: boolean;
+  recordInventoryCount: (
+    id: string,
+    measured: number,
+    reason: string,
+  ) => Promise<void>;
+  createInventoryItem: (data: Omit<InventoryItem, 'id'>) => Promise<void>;
   stockLogs: StockLog[];
   currentView: AppView;
   setCurrentView: (view: AppView) => void;
@@ -75,11 +95,27 @@ interface StudioContextType {
   setIsOrderModalOpen: (open: boolean) => void;
   activeTrackingId: string;
   setActiveTrackingId: (id: string) => void;
-  addOrder: (newOrder: Omit<Order, 'id' | 'createdAt'>) => Promise<Order>;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
-  updateOrderPayment: (orderId: string, paymentStatus: 'BELUM_BAYAR' | 'LUNAS') => Promise<void>;
+  addOrder: (
+    newOrder: Omit<Order, 'id' | 'createdAt'>,
+    requestId?: string,
+  ) => Promise<Order>;
+  updateOrderStatus: (
+    orderId: string,
+    status: OrderStatus,
+    cancellation?: { reason: string; materials: 'unused' | 'used' },
+  ) => Promise<void>;
+  updateOrderPayment: (
+    orderId: string,
+    paymentStatus: 'BELUM_BAYAR' | 'LUNAS',
+  ) => Promise<void>;
+  reconcileStock: (orderId: string) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
-  restockItem: (itemId: string, addedAmount: number, reason: string, newMaxCapacity?: number) => void;
+  restockItem: (
+    itemId: string,
+    addedAmount: number,
+    reason: string,
+    newMaxCapacity?: number,
+  ) => Promise<void>;
   updateRollConfig: (id: string, updated: Partial<RollPaperConfig>) => void;
   updateSheetConfig: (id: string, updated: Partial<SheetPaperConfig>) => void;
   openOrderWithService: (service: ServiceItem) => void;
@@ -98,7 +134,9 @@ interface StudioContextType {
 
   // Customer Feedback & Market Research
   surveys: CustomerFeedbackSurvey[];
-  submitSurvey: (survey: Omit<CustomerFeedbackSurvey, 'id' | 'createdAt'>) => Promise<string>;
+  submitSurvey: (
+    survey: Omit<CustomerFeedbackSurvey, 'id' | 'createdAt'>,
+  ) => Promise<string>;
   isSurveyModalOpen: boolean;
   setIsSurveyModalOpen: (open: boolean) => void;
 
@@ -113,7 +151,10 @@ interface StudioContextType {
   adminEmail: string;
   setAdminEmail: (email: string) => void;
   adminPassword: string;
-  loginWithFirebaseAuth: (email: string, pass: string) => Promise<{ requires2FA: boolean }>;
+  loginWithFirebaseAuth: (
+    email: string,
+    pass: string,
+  ) => Promise<{ requires2FA: boolean }>;
   registerAdminWithFirebaseAuth: (email: string, pass: string) => Promise<void>;
   logoutAdmin: () => Promise<void>;
   changeAdminPassword: (newPass: string) => Promise<void>;
@@ -124,7 +165,10 @@ interface StudioContextType {
   isTwoFactorEnabled: boolean;
   twoFactorSecret: string;
   verifyTotpCode: (code: string, secretOverride?: string) => boolean;
-  enableTwoFactor: (secret: string, testCode: string) => Promise<{ success: boolean; message: string }>;
+  enableTwoFactor: (
+    secret: string,
+    testCode: string,
+  ) => Promise<{ success: boolean; message: string }>;
   disableTwoFactor: () => Promise<void>;
   getOtpAuthUri: (secretStr?: string) => string;
   generateNewTwoFactorSecret: () => string;
@@ -136,7 +180,9 @@ interface StudioContextType {
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
 
-export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   // Never populate production reports from demonstration data or old browser caches.
   const [orders, setOrders] = useState<Order[]>([]);
   // Services / Menu Items State
@@ -167,22 +213,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return INITIAL_SHEET_CONFIGS;
   });
 
-  // Inventory & Stock Tracking
-  const [inventory, setInventory] = useState<InventoryItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('queen_photo_inventory');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_INVENTORY;
-  });
-
-  const [stockLogs, setStockLogs] = useState<StockLog[]>(() => {
-    try {
-      const saved = localStorage.getItem('queen_photo_stock_logs');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_STOCK_LOGS;
-  });
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [stockLogs, setStockLogs] = useState<StockLog[]>([]);
+  const [inventoryReady, setInventoryReady] = useState(false);
 
   // Admin Account & Credentials
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
@@ -203,12 +236,15 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Role Separation
   const [activeRole, setActiveRole] = useState<UserRole>('CUSTOMER');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return false;
-  });
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(
+    () => {
+      return false;
+    },
+  );
 
   const [currentView, setCurrentView] = useState<AppView>('beranda');
-  const [selectedServiceForOrder, setSelectedServiceForOrder] = useState<ServiceItem | null>(null);
+  const [selectedServiceForOrder, setSelectedServiceForOrder] =
+    useState<ServiceItem | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [activeTrackingId, setActiveTrackingId] = useState('');
   const [monthlyRevenueTarget, setMonthlyRevenueTarget] = useState(30000000);
@@ -252,11 +288,11 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [services]);
 
   useEffect(() => {
-    localStorage.setItem('queen_photo_inventory', JSON.stringify(inventory));
+    localStorage.removeItem('queen_photo_inventory');
   }, [inventory]);
 
   useEffect(() => {
-    localStorage.setItem('queen_photo_stock_logs', JSON.stringify(stockLogs));
+    localStorage.removeItem('queen_photo_stock_logs');
   }, [stockLogs]);
 
   useEffect(() => {
@@ -281,11 +317,15 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             snapshot.forEach((docSnap) => {
               list.push(docSnap.data() as CustomerFeedbackSurvey);
             });
-            list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            list.sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
+            );
             setSurveys(list);
           }
         },
-        () => {}
+        () => {},
       );
     } catch {}
     return () => {
@@ -294,7 +334,10 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [isAdminAuthenticated]);
 
   useEffect(() => {
-    sessionStorage.setItem('queen_admin_auth', isAdminAuthenticated ? 'true' : 'false');
+    sessionStorage.setItem(
+      'queen_admin_auth',
+      isAdminAuthenticated ? 'true' : 'false',
+    );
   }, [isAdminAuthenticated]);
 
   // Only a server-issued custom claim can authorize staff access.
@@ -320,20 +363,49 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     let unsubscribe: (() => void) | undefined;
 
     try {
-      if (!firebaseUser) { setOrders([]); return; }
-      const ordersColRef = isAdminAuthenticated ? collection(db, 'orders') : query(collection(db, 'orders'), where('ownerUid', '==', firebaseUser.uid));
+      if (!firebaseUser) {
+        setOrders([]);
+        return;
+      }
+      const ordersColRef = isAdminAuthenticated
+        ? collection(db, 'orders')
+        : query(
+            collection(db, 'orders'),
+            where('ownerUid', '==', firebaseUser.uid),
+          );
       unsubscribe = onSnapshot(
         ordersColRef,
         (snapshot) => {
           setIsFirebaseConnected(true);
 
-          const firestoreOrders = snapshot.docs.map(snapshot => ({ ...snapshot.data(), id: snapshot.id } as Order));
-          setOrders(firestoreOrders.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+          const firestoreOrders = snapshot.docs.map((snapshot) => {
+            const order = { ...snapshot.data(), id: snapshot.id } as Order;
+            if (
+              order.channel === 'ONLINE' &&
+              order.paymentStatus === 'BELUM_BAYAR' &&
+              order.orderStatus === 'MENUNGGU_BAYAR'
+            )
+              return {
+                ...order,
+                inventoryStatus: 'PENDING' as const,
+                materialUsage: undefined,
+                history: [],
+                recordedBy: undefined,
+                paymentVerifiedBy: undefined,
+                paidAt: undefined,
+              };
+            return order;
+          });
+          setOrders(
+            firestoreOrders.sort((a, b) =>
+              b.createdAt.localeCompare(a.createdAt),
+            ),
+          );
         },
         (error) => {
           console.warn('Firestore subscription fallback:', error);
           setIsFirebaseConnected(false);
-        }
+        },
       );
     } catch (err) {
       console.warn('Firestore initialization fallback:', err);
@@ -367,7 +439,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         },
         (error) => {
           console.warn('Firestore services subscription note:', error);
-        }
+        },
       );
     } catch (err) {
       console.warn('Firestore services initialization note:', err);
@@ -388,7 +460,10 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const data = snap.data();
           if (typeof data.isTwoFactorEnabled === 'boolean') {
             setIsTwoFactorEnabled(data.isTwoFactorEnabled);
-            localStorage.setItem('queen_2fa_enabled', String(data.isTwoFactorEnabled));
+            localStorage.setItem(
+              'queen_2fa_enabled',
+              String(data.isTwoFactorEnabled),
+            );
           }
           if (data.twoFactorSecret) {
             setTwoFactorSecret(data.twoFactorSecret);
@@ -400,388 +475,87 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch {}
   }, [isAdminAuthenticated]);
 
-  // INVENTORY ENGINE: Deduct stock based on order items
-  const deductStockForOrder = (order: Order, isManualWalkin = false) => {
-    setInventory(prevInv => {
-      const newInv = [...prevInv];
-      const newLogs: StockLog[] = [];
+  useEffect(() => {
+    setInventoryReady(false);
+    setInventory([]);
+    setStockLogs([]);
+    if (!isAdminAuthenticated) return;
+    const inventorySubscription = onSnapshot(
+      collection(db, 'inventory'),
+      (snapshot) => {
+        setInventory(
+          snapshot.docs.map(
+            (item) => ({ ...item.data(), id: item.id }) as InventoryItem,
+          ),
+        );
+        setInventoryReady(true);
+      },
+      () => setInventoryReady(false),
+    );
+    const logsSubscription = onSnapshot(
+      collection(db, 'stock_logs'),
+      (snapshot) => {
+        setStockLogs(
+          snapshot.docs
+            .filter((log) => log.data().type !== 'ORDER_STATE')
+            .map((log) => ({ ...log.data(), id: log.id }) as StockLog)
+            .sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
+        );
+      },
+      () => setStockLogs([]),
+    );
+    return () => {
+      inventorySubscription();
+      logsSubscription();
+    };
+  }, [isAdminAuthenticated]);
 
-      order.items.forEach(item => {
-        // Roll deduction (Minilab 6" 15.2cm):
-        if (item.serviceId === 'cetak-4r') {
-          const usedMeters = Number((0.102 * item.quantity).toFixed(2));
-          const rollIndex = newInv.findIndex(i => i.id === 'inv-roll-minilab-6inch');
-          if (rollIndex !== -1) {
-            const prev = newInv[rollIndex].currentStock;
-            const updated = Math.max(0, Number((prev - usedMeters).toFixed(2)));
-            newInv[rollIndex] = { ...newInv[rollIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[rollIndex].id,
-              itemName: newInv[rollIndex].name,
-              changeAmount: -usedMeters,
-              previousStock: prev,
-              newStock: updated,
-              reason: `${item.quantity}x Cetak 4R #${order.id} (${usedMeters}m dipotong mesin)`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.serviceId === 'photostrip-korean-2x6') {
-          const usedMeters = Number((0.051 * item.quantity).toFixed(2));
-          const rollIndex = newInv.findIndex(i => i.id === 'inv-roll-minilab-6inch');
-          if (rollIndex !== -1) {
-            const prev = newInv[rollIndex].currentStock;
-            const updated = Math.max(0, Number((prev - usedMeters).toFixed(2)));
-            newInv[rollIndex] = { ...newInv[rollIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[rollIndex].id,
-              itemName: newInv[rollIndex].name,
-              changeAmount: -usedMeters,
-              previousStock: prev,
-              newStock: updated,
-              reason: `${item.quantity}x Photostrip Korean #${order.id} (${usedMeters}m dipotong)`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.serviceId === 'paket-polaroid-mini') {
-          const usedMeters = Number((0.089 * item.quantity).toFixed(2));
-          const rollIndex = newInv.findIndex(i => i.id === 'inv-roll-minilab-6inch');
-          if (rollIndex !== -1) {
-            const prev = newInv[rollIndex].currentStock;
-            const updated = Math.max(0, Number((prev - usedMeters).toFixed(2)));
-            newInv[rollIndex] = { ...newInv[rollIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[rollIndex].id,
-              itemName: newInv[rollIndex].name,
-              changeAmount: -usedMeters,
-              previousStock: prev,
-              newStock: updated,
-              reason: `${item.quantity}x Polaroid Mini #${order.id} (${usedMeters}m roll)`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.serviceId === 'cetak-16r-bingkai') {
-          const usedMeters = Number((0.40 * item.quantity).toFixed(2));
-          const canvasIndex = newInv.findIndex(i => i.id === 'inv-roll-canvas-plotter');
-          if (canvasIndex !== -1) {
-            const prev = newInv[canvasIndex].currentStock;
-            const updated = Math.max(0, Number((prev - usedMeters).toFixed(2)));
-            newInv[canvasIndex] = { ...newInv[canvasIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[canvasIndex].id,
-              itemName: newInv[canvasIndex].name,
-              changeAmount: -usedMeters,
-              previousStock: prev,
-              newStock: updated,
-              reason: `${item.quantity}x Cetak 16R Kanvas #${order.id} (${usedMeters}m plotter roll)`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.category === 'pas_foto') {
-          const usedSheets = Math.ceil(item.quantity / 4);
-          const sheetIndex = newInv.findIndex(i => i.id === 'inv-sheet-a4-lustre');
-          if (sheetIndex !== -1) {
-            const prev = newInv[sheetIndex].currentStock;
-            const updated = Math.max(0, prev - usedSheets);
-            newInv[sheetIndex] = { ...newInv[sheetIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[sheetIndex].id,
-              itemName: newInv[sheetIndex].name,
-              changeAmount: -usedSheets,
-              previousStock: prev,
-              newStock: updated,
-              reason: `${item.quantity}x Pas Foto #${order.id} (${usedSheets} lembar A4 Silk)`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.serviceId === 'mug-custom-sublim') {
-          const mugIndex = newInv.findIndex(i => i.id === 'inv-mug-coating-putih');
-          if (mugIndex !== -1) {
-            const prev = newInv[mugIndex].currentStock;
-            const updated = Math.max(0, prev - item.quantity);
-            newInv[mugIndex] = { ...newInv[mugIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[mugIndex].id,
-              itemName: newInv[mugIndex].name,
-              changeAmount: -item.quantity,
-              previousStock: prev,
-              newStock: updated,
-              reason: `${item.quantity}x Mug Sublimasi #${order.id}`,
-              orderId: order.id,
-            });
-          }
-        }
-
-        if (item.frame && item.frame.includes('Minimalis Hitam')) {
-          const frameIndex = newInv.findIndex(i => i.id === 'inv-frame-minimalis-10r');
-          if (frameIndex !== -1) {
-            const prev = newInv[frameIndex].currentStock;
-            const updated = Math.max(0, prev - item.quantity);
-            newInv[frameIndex] = { ...newInv[frameIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[frameIndex].id,
-              itemName: newInv[frameIndex].name,
-              changeAmount: -item.quantity,
-              previousStock: prev,
-              newStock: updated,
-              reason: `${item.quantity}x Bingkai Minimalis Hitam #${order.id}`,
-              orderId: order.id,
-            });
-          }
-        }
-      });
-
-      if (newLogs.length > 0) {
-        setStockLogs(prev => [...newLogs, ...prev]);
-        newLogs.forEach(async (log) => {
-          try {
-            await setDoc(doc(db, 'stock_logs', log.id), log);
-          } catch {}
-        });
-      }
-
-      newInv.forEach(async (invItem) => {
-        try {
-          await setDoc(doc(db, 'inventory', invItem.id), invItem);
-        } catch {}
-      });
-
-      return newInv;
-    });
+  const recordInventoryCount = async (
+    id: string,
+    measured: number,
+    reason: string,
+  ) => {
+    if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
+    await recordStocktake(id, measured, reason);
   };
-
-  // RESTORE STOCK: When order is cancelled
-  const restoreStockForOrder = (order: Order) => {
-    setInventory(prevInv => {
-      const newInv = [...prevInv];
-      const newLogs: StockLog[] = [];
-
-      order.items.forEach(item => {
-        if (item.serviceId === 'cetak-4r') {
-          const usedMeters = Number((0.102 * item.quantity).toFixed(2));
-          const rollIndex = newInv.findIndex(i => i.id === 'inv-roll-minilab-6inch');
-          if (rollIndex !== -1) {
-            const prev = newInv[rollIndex].currentStock;
-            const updated = Number((prev + usedMeters).toFixed(2));
-            newInv[rollIndex] = { ...newInv[rollIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-restore-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[rollIndex].id,
-              itemName: newInv[rollIndex].name,
-              changeAmount: +usedMeters,
-              previousStock: prev,
-              newStock: updated,
-              reason: `Batal Pesanan #${order.id}: Kembalikan ${usedMeters}m kertas roll`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.serviceId === 'photostrip-korean-2x6') {
-          const usedMeters = Number((0.051 * item.quantity).toFixed(2));
-          const rollIndex = newInv.findIndex(i => i.id === 'inv-roll-minilab-6inch');
-          if (rollIndex !== -1) {
-            const prev = newInv[rollIndex].currentStock;
-            const updated = Number((prev + usedMeters).toFixed(2));
-            newInv[rollIndex] = { ...newInv[rollIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-restore-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[rollIndex].id,
-              itemName: newInv[rollIndex].name,
-              changeAmount: +usedMeters,
-              previousStock: prev,
-              newStock: updated,
-              reason: `Batal Pesanan #${order.id}: Kembalikan ${usedMeters}m photostrip`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.serviceId === 'paket-polaroid-mini') {
-          const usedMeters = Number((0.089 * item.quantity).toFixed(2));
-          const rollIndex = newInv.findIndex(i => i.id === 'inv-roll-minilab-6inch');
-          if (rollIndex !== -1) {
-            const prev = newInv[rollIndex].currentStock;
-            const updated = Number((prev + usedMeters).toFixed(2));
-            newInv[rollIndex] = { ...newInv[rollIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-restore-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[rollIndex].id,
-              itemName: newInv[rollIndex].name,
-              changeAmount: +usedMeters,
-              previousStock: prev,
-              newStock: updated,
-              reason: `Batal Pesanan #${order.id}: Kembalikan ${usedMeters}m polaroid`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.serviceId === 'cetak-16r-bingkai') {
-          const usedMeters = Number((0.40 * item.quantity).toFixed(2));
-          const canvasIndex = newInv.findIndex(i => i.id === 'inv-roll-canvas-plotter');
-          if (canvasIndex !== -1) {
-            const prev = newInv[canvasIndex].currentStock;
-            const updated = Number((prev + usedMeters).toFixed(2));
-            newInv[canvasIndex] = { ...newInv[canvasIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-restore-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[canvasIndex].id,
-              itemName: newInv[canvasIndex].name,
-              changeAmount: +usedMeters,
-              previousStock: prev,
-              newStock: updated,
-              reason: `Batal Pesanan #${order.id}: Kembalikan ${usedMeters}m kanvas plotter`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.category === 'pas_foto') {
-          const usedSheets = Math.ceil(item.quantity / 4);
-          const sheetIndex = newInv.findIndex(i => i.id === 'inv-sheet-a4-lustre');
-          if (sheetIndex !== -1) {
-            const prev = newInv[sheetIndex].currentStock;
-            const updated = prev + usedSheets;
-            newInv[sheetIndex] = { ...newInv[sheetIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-restore-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[sheetIndex].id,
-              itemName: newInv[sheetIndex].name,
-              changeAmount: +usedSheets,
-              previousStock: prev,
-              newStock: updated,
-              reason: `Batal Pesanan #${order.id}: Kembalikan ${usedSheets} lembar A4 Silk`,
-              orderId: order.id,
-            });
-          }
-        } else if (item.serviceId === 'mug-custom-sublim') {
-          const mugIndex = newInv.findIndex(i => i.id === 'inv-mug-coating-putih');
-          if (mugIndex !== -1) {
-            const prev = newInv[mugIndex].currentStock;
-            const updated = prev + item.quantity;
-            newInv[mugIndex] = { ...newInv[mugIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-restore-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[mugIndex].id,
-              itemName: newInv[mugIndex].name,
-              changeAmount: +item.quantity,
-              previousStock: prev,
-              newStock: updated,
-              reason: `Batal Pesanan #${order.id}: Kembalikan ${item.quantity} mug`,
-              orderId: order.id,
-            });
-          }
-        }
-
-        if (item.frame && item.frame.includes('Minimalis Hitam')) {
-          const frameIndex = newInv.findIndex(i => i.id === 'inv-frame-minimalis-10r');
-          if (frameIndex !== -1) {
-            const prev = newInv[frameIndex].currentStock;
-            const updated = prev + item.quantity;
-            newInv[frameIndex] = { ...newInv[frameIndex], currentStock: updated };
-            newLogs.push({
-              id: `log-restore-${Date.now()}-${Math.random()}`,
-              timestamp: new Date().toISOString(),
-              itemId: newInv[frameIndex].id,
-              itemName: newInv[frameIndex].name,
-              changeAmount: +item.quantity,
-              previousStock: prev,
-              newStock: updated,
-              reason: `Batal Pesanan #${order.id}: Kembalikan ${item.quantity} bingkai`,
-              orderId: order.id,
-            });
-          }
-        }
-      });
-
-      if (newLogs.length > 0) {
-        setStockLogs(prev => [...newLogs, ...prev]);
-        newLogs.forEach(async (log) => {
-          try {
-            await setDoc(doc(db, 'stock_logs', log.id), log);
-          } catch {}
-        });
-      }
-
-      newInv.forEach(async (invItem) => {
-        try {
-          await setDoc(doc(db, 'inventory', invItem.id), invItem);
-        } catch {}
-      });
-
-      return newInv;
-    });
+  const createInventoryItem = async (data: Omit<InventoryItem, 'id'>) => {
+    if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
+    await createMaterial(data);
   };
-
-  // RESTOCK ITEM MANUALLY (Admin) - Supports updating the denominator / target capacity
-  const restockItem = (itemId: string, addedAmount: number, reason: string, newMaxCapacity?: number) => {
-    setInventory(prevInv => {
-      const newInv = prevInv.map(item => {
-        if (item.id === itemId) {
-          const prev = item.currentStock;
-          const updatedStock = Number((prev + addedAmount).toFixed(2));
-
-          // Compute denominator: user specified target, or expanded to accommodate the new stock
-          let updatedMaxStock = item.maxStock;
-          if (newMaxCapacity && newMaxCapacity > 0) {
-            updatedMaxStock = newMaxCapacity;
-          } else if (updatedStock > item.maxStock) {
-            updatedMaxStock = updatedStock;
-          }
-
-          const log: StockLog = {
-            id: `log-restock-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            itemId: item.id,
-            itemName: item.name,
-            changeAmount: addedAmount,
-            previousStock: prev,
-            newStock: updatedStock,
-            reason: reason || 'Restock pengadaan bahan baru',
-          };
-          setStockLogs(prevLogs => [log, ...prevLogs]);
-          setDoc(doc(db, 'stock_logs', log.id), log).catch(() => {});
-          const updatedItem = {
-            ...item,
-            currentStock: updatedStock,
-            maxStock: updatedMaxStock
-          };
-          setDoc(doc(db, 'inventory', updatedItem.id), updatedItem).catch(() => {});
-          return updatedItem;
-        }
-        return item;
-      });
-      return newInv;
-    });
+  const restockItem = async (
+    itemId: string,
+    amount: number,
+    reason: string,
+    maximum?: number,
+  ) => {
+    if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
+    await addStock(itemId, amount, reason, maximum);
   };
 
   // CART ACTIONS
   const addToCart = (item: OrderItem) => {
-    setCart(prev => [...prev, item]);
+    setCart((prev) => [...prev, item]);
   };
 
   const addServiceDirectlyToCart = (service: ServiceItem, qty: number = 1) => {
-    const defaultSize = service.options?.sizes?.[0] || service.unit || 'Standar';
-    const defaultFinish = service.options?.finishes?.[0] || 'Glossy Anti-Luntur';
+    const defaultSize =
+      service.options?.sizes?.[0] || service.unit || 'Standar';
+    const defaultFinish =
+      service.options?.finishes?.[0] || 'Glossy Anti-Luntur';
     const defaultFrame = service.options?.frames?.[0] || 'Tanpa Bingkai';
-    const defaultBg = service.options?.backgroundColors?.[0] || (service.category === 'pas_foto' ? 'Merah (Tahun Ganjil KTP)' : undefined);
+    const defaultBg =
+      service.options?.backgroundColors?.[0] ||
+      (service.category === 'pas_foto'
+        ? 'Merah (Tahun Ganjil KTP)'
+        : undefined);
 
     let price = service.basePrice;
     let cost = service.estimatedCost;
 
-    if (defaultFrame === 'Minimalis Hitam' || defaultFrame === 'Minimalis Putih') {
+    if (
+      defaultFrame === 'Minimalis Hitam' ||
+      defaultFrame === 'Minimalis Putih'
+    ) {
       price += 25000;
       cost += 12000;
     }
@@ -800,12 +574,12 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       unitCost: cost,
     };
 
-    setCart(prev => [...prev, item]);
+    setCart((prev) => [...prev, item]);
     setIsCartOpen(true);
   };
 
   const removeFromCart = (itemId: string) => {
-    setCart(prev => prev.filter(i => i.id !== itemId));
+    setCart((prev) => prev.filter((i) => i.id !== itemId));
   };
 
   const updateCartItemQuantity = (itemId: string, qty: number) => {
@@ -813,7 +587,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       removeFromCart(itemId);
       return;
     }
-    setCart(prev => prev.map(i => i.id === itemId ? { ...i, quantity: qty } : i));
+    setCart((prev) =>
+      prev.map((i) => (i.id === itemId ? { ...i, quantity: qty } : i)),
+    );
   };
 
   const clearCart = () => {
@@ -821,7 +597,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // SURVEY SUBMISSION
-  const submitSurvey = async (surveyData: Omit<CustomerFeedbackSurvey, 'id' | 'createdAt'>): Promise<string> => {
+  const submitSurvey = async (
+    surveyData: Omit<CustomerFeedbackSurvey, 'id' | 'createdAt'>,
+  ): Promise<string> => {
     const discountCode = 'QUEEN10HEMAT';
     const newSurvey: CustomerFeedbackSurvey = {
       ...surveyData,
@@ -830,26 +608,34 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       claimedDiscountCode: discountCode,
     };
 
-    await setDoc(doc(db, 'customer_surveys', newSurvey.id), cleanForFirestore(newSurvey));
-    setSurveys(prev => [newSurvey, ...prev]);
+    await setDoc(
+      doc(db, 'customer_surveys', newSurvey.id),
+      cleanForFirestore(newSurvey),
+    );
+    setSurveys((prev) => [newSurvey, ...prev]);
 
     return discountCode;
   };
 
   // Helper to remove any undefined values before writing to Firestore
   const cleanForFirestore = (obj: any): any => {
-    return JSON.parse(JSON.stringify(obj, (_, value) => {
-      if (value === undefined) return null;
-      return value;
-    }));
+    return JSON.parse(
+      JSON.stringify(obj, (_, value) => {
+        if (value === undefined) return null;
+        return value;
+      }),
+    );
   };
 
   // MENU MANAGEMENT ACTIONS
-  const addService = async (newService: Omit<ServiceItem, 'id'>): Promise<ServiceItem> => {
-    const slug = newService.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '') || 'service';
+  const addService = async (
+    newService: Omit<ServiceItem, 'id'>,
+  ): Promise<ServiceItem> => {
+    const slug =
+      newService.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '') || 'service';
     const id = `${slug}-${Date.now().toString().slice(-4)}`;
 
     const fullService: ServiceItem = {
@@ -858,7 +644,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isActive: newService.isActive ?? true,
     };
 
-    setServices(prev => {
+    setServices((prev) => {
       const next = [fullService, ...prev];
       try {
         localStorage.setItem('queen_photo_services', JSON.stringify(next));
@@ -876,26 +662,25 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return fullService;
   };
 
-  const updateService = async (id: string, updated: Partial<ServiceItem>): Promise<void> => {
-    setServices(prev => {
-      const next = prev.map(s => (s.id === id ? { ...s, ...updated } : s));
-      try {
-        localStorage.setItem('queen_photo_services', JSON.stringify(next));
-      } catch {}
-      return next;
+  const updateService = async (
+    id: string,
+    updated: Partial<ServiceItem>,
+  ): Promise<void> => {
+    if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
+    const current = services.find((service) => service.id === id);
+    if (!current) throw new Error('Layanan tidak ditemukan.');
+    const next = { ...current, ...updated, id };
+    await setDoc(doc(db, 'services', id), cleanForFirestore(next), {
+      merge: true,
     });
-
-    try {
-      const cleanData = cleanForFirestore(updated);
-      await setDoc(doc(db, 'services', id), cleanData, { merge: true });
-    } catch (e) {
-      console.error('Firestore update service error:', e);
-    }
+    setServices((previous) =>
+      previous.map((service) => (service.id === id ? next : service)),
+    );
   };
 
   const deleteService = async (id: string): Promise<void> => {
-    setServices(prev => {
-      const next = prev.filter(s => s.id !== id);
+    setServices((prev) => {
+      const next = prev.filter((s) => s.id !== id);
       try {
         localStorage.setItem('queen_photo_services', JSON.stringify(next));
       } catch {}
@@ -912,7 +697,10 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const resetServicesToDefault = async (): Promise<void> => {
     setServices(INITIAL_SERVICES);
     try {
-      localStorage.setItem('queen_photo_services', JSON.stringify(INITIAL_SERVICES));
+      localStorage.setItem(
+        'queen_photo_services',
+        JSON.stringify(INITIAL_SERVICES),
+      );
       for (const s of INITIAL_SERVICES) {
         const clean = cleanForFirestore(s);
         await setDoc(doc(db, 'services', s.id), clean);
@@ -922,55 +710,90 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  // ADD NEW ORDER
-  const addOrder = async (orderData: Omit<Order, 'id' | 'createdAt'>): Promise<Order> => {
+  const addOrder = async (
+    orderData: Omit<Order, 'id' | 'createdAt'>,
+    requestId: string = crypto.randomUUID(),
+  ): Promise<Order> => {
+    if (orderData.channel === 'WALKIN') {
+      if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
+      const order = await saveWalkin(orderData, requestId);
+      setOrders((previous) => [
+        order,
+        ...previous.filter((item) => item.id !== order.id),
+      ]);
+      return order;
+    }
     const user = auth.currentUser || (await signInAnonymously(auth)).user;
-    const newId = `QP-${crypto.randomUUID()}`;
     const newOrder: Order = {
       ...orderData,
-      ...(orderData.channel === 'ONLINE' ? { paymentStatus: 'BELUM_BAYAR' as const, orderStatus: 'MENUNGGU_BAYAR' as const } : {}),
+      paymentStatus: 'BELUM_BAYAR',
+      orderStatus: 'MENUNGGU_BAYAR',
       ownerUid: user.uid,
-      id: newId,
+      id: `QP-${requestId}`,
       createdAt: new Date().toISOString(),
+      workflowVersion: 2,
+      inventoryStatus: 'PENDING',
     };
-    // Do not confirm or consume stock until the durable write succeeds.
-    await setDoc(doc(db, 'orders', newId), cleanForFirestore(newOrder));
-    setOrders(prev => [newOrder, ...prev.filter(order => order.id !== newId)]);
-    if (isAdminAuthenticated) deductStockForOrder(newOrder, newOrder.channel === 'WALKIN');
+    await setDoc(doc(db, 'orders', newOrder.id), cleanForFirestore(newOrder));
+    setOrders((previous) => [
+      newOrder,
+      ...previous.filter((item) => item.id !== newOrder.id),
+    ]);
     return newOrder;
   };
-
-  const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+  const updateOrderStatus = async (
+    id: string,
+    status: OrderStatus,
+    cancellation?: { reason: string; materials: 'unused' | 'used' },
+  ) => {
     if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
-    const previous = orders.find(order => order.id === orderId);
-    await updateDoc(doc(db, 'orders', orderId), { orderStatus: status });
-    if (previous && status === 'DIBATALKAN' && previous.orderStatus !== 'DIBATALKAN' && previous.channel === 'WALKIN') restoreStockForOrder(previous);
-    if (previous && previous.orderStatus === 'DIBATALKAN' && status !== 'DIBATALKAN' && previous.channel === 'WALKIN') deductStockForOrder(previous);
-    setOrders(prev => prev.map(order => order.id === orderId ? { ...order, orderStatus: status } : order));
+    const order = await changeOrderStatus(id, status, cancellation);
+    setOrders((previous) =>
+      previous.map((item) => (item.id === id ? order : item)),
+    );
   };
-
-  const updateOrderPayment = async (orderId: string, paymentStatus: 'BELUM_BAYAR' | 'LUNAS') => {
+  const updateOrderPayment = async (
+    id: string,
+    paymentStatus: Order['paymentStatus'],
+  ) => {
     if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
-    await updateDoc(doc(db, 'orders', orderId), { paymentStatus });
-    setOrders(prev => prev.map(order => order.id === orderId ? { ...order, paymentStatus } : order));
+    const order = await verifyOrderPayment(id, paymentStatus);
+    setOrders((previous) =>
+      previous.map((item) => (item.id === id ? order : item)),
+    );
   };
-
-  const deleteOrder = async (_orderId: string) => {
-    throw new Error('Untuk menjaga riwayat penjualan, ubah status menjadi DIBATALKAN.');
+  const reconcileStock = async (id: string) => {
+    if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
+    const order = await reconcileMaterialUsage(id);
+    setOrders((previous) =>
+      previous.map((item) => (item.id === id ? order : item)),
+    );
+  };
+  const deleteOrder = async (_id: string) => {
+    throw new Error(
+      'Batalkan pesanan dengan alasan agar riwayat tetap tersimpan.',
+    );
   };
 
   // UPDATE CONFIGS
   const updateRollConfig = (id: string, updated: Partial<RollPaperConfig>) => {
     setRollConfigs((prev) => {
-      const next = prev.map((cfg) => (cfg.id === id ? { ...cfg, ...updated } : cfg));
+      const next = prev.map((cfg) =>
+        cfg.id === id ? { ...cfg, ...updated } : cfg,
+      );
       localStorage.setItem('queen_photo_roll_configs', JSON.stringify(next));
       return next;
     });
   };
 
-  const updateSheetConfig = (id: string, updated: Partial<SheetPaperConfig>) => {
+  const updateSheetConfig = (
+    id: string,
+    updated: Partial<SheetPaperConfig>,
+  ) => {
     setSheetConfigs((prev) => {
-      const next = prev.map((cfg) => (cfg.id === id ? { ...cfg, ...updated } : cfg));
+      const next = prev.map((cfg) =>
+        cfg.id === id ? { ...cfg, ...updated } : cfg,
+      );
       localStorage.setItem('queen_photo_sheet_configs', JSON.stringify(next));
       return next;
     });
@@ -982,20 +805,34 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // REAL AUTHENTICATION ENGINE (FIREBASE AUTH & PRODUCTION CHECKS)
-  const loginWithFirebaseAuth = async (emailInput: string, passwordInput: string): Promise<{ requires2FA: boolean }> => {
-    const result = await signInWithEmailAndPassword(auth, emailInput.trim(), passwordInput);
+  const loginWithFirebaseAuth = async (
+    emailInput: string,
+    passwordInput: string,
+  ): Promise<{ requires2FA: boolean }> => {
+    const result = await signInWithEmailAndPassword(
+      auth,
+      emailInput.trim(),
+      passwordInput,
+    );
     const token = await result.user.getIdTokenResult(true);
     if (token.claims.staff !== true) {
       await signOut(auth);
-      throw new Error('Akun ini belum memiliki izin staf. Hubungi pemilik studio.');
+      throw new Error(
+        'Akun ini belum memiliki izin staf. Hubungi pemilik studio.',
+      );
     }
     setIsAdminAuthenticated(true);
     setActiveRole('ADMIN');
     return { requires2FA: false };
   };
 
-  const registerAdminWithFirebaseAuth = async (_email: string, _password: string): Promise<void> => {
-    throw new Error('Akun staf harus dibuat oleh pemilik melalui Firebase Admin. Pendaftaran publik dinonaktifkan.');
+  const registerAdminWithFirebaseAuth = async (
+    _email: string,
+    _password: string,
+  ): Promise<void> => {
+    throw new Error(
+      'Akun staf harus dibuat oleh pemilik melalui Firebase Admin. Pendaftaran publik dinonaktifkan.',
+    );
   };
 
   const logoutAdmin = async () => {
@@ -1010,11 +847,14 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // PASSWORD CHANGE & RESET
   const changeAdminPassword = async (newPass: string): Promise<void> => {
-    if (!auth.currentUser || !isAdminAuthenticated) throw new Error('Silakan login sebagai staf.');
+    if (!auth.currentUser || !isAdminAuthenticated)
+      throw new Error('Silakan login sebagai staf.');
     await updatePassword(auth.currentUser, newPass);
   };
 
-  const triggerPasswordReset = async (emailToReset: string): Promise<string> => {
+  const triggerPasswordReset = async (
+    emailToReset: string,
+  ): Promise<string> => {
     const cleanEmail = emailToReset.trim();
     if (!cleanEmail) {
       throw new Error('Masukkan alamat email untuk reset password.');
@@ -1026,11 +866,15 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch (err: any) {
       const code = err?.code;
       if (code === 'auth/user-not-found') {
-        throw new Error(`Email ${cleanEmail} belum terdaftar di database Firebase. Pastikan email sudah terdaftar.`);
+        throw new Error(
+          `Email ${cleanEmail} belum terdaftar di database Firebase. Pastikan email sudah terdaftar.`,
+        );
       } else if (code === 'auth/invalid-email') {
         throw new Error('Format alamat email tidak valid.');
       } else {
-        throw new Error(err?.message || 'Gagal mengirim email reset password via Firebase.');
+        throw new Error(
+          err?.message || 'Gagal mengirim email reset password via Firebase.',
+        );
       }
     }
   };
@@ -1039,17 +883,22 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsTwoFactorEnabled(false);
     localStorage.setItem('queen_2fa_enabled', 'false');
     try {
-      await setDoc(doc(db, 'admins', 'heroch94'), {
-        isTwoFactorEnabled: false,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      await setDoc(
+        doc(db, 'admins', 'heroch94'),
+        {
+          isTwoFactorEnabled: false,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
     } catch {}
   };
 
   // REAL 3RD-PARTY GOOGLE AUTHENTICATOR (RFC 6238 TOTP ENGINE)
   const verifyTotpCode = (code: string, secretOverride?: string): boolean => {
     try {
-      const secretToUse = secretOverride || twoFactorSecret || 'JBSWY3DPEHPK3PXP';
+      const secretToUse =
+        secretOverride || twoFactorSecret || 'JBSWY3DPEHPK3PXP';
       const cleanSecret = secretToUse.replace(/[\s-]/g, '').toUpperCase();
 
       const totp = new OTPAuth.TOTP({
@@ -1070,12 +919,16 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const enableTwoFactor = async (secret: string, testCode: string): Promise<{ success: boolean; message: string }> => {
+  const enableTwoFactor = async (
+    secret: string,
+    testCode: string,
+  ): Promise<{ success: boolean; message: string }> => {
     const isValid = verifyTotpCode(testCode, secret);
     if (!isValid) {
       return {
         success: false,
-        message: 'Kode 6-digit tidak valid. Pastikan waktu jam di HP Anda sudah sinkron (otomatis) dan masukkan kode yang baru sebelum berganti.'
+        message:
+          'Kode 6-digit tidak valid. Pastikan waktu jam di HP Anda sudah sinkron (otomatis) dan masukkan kode yang baru sebelum berganti.',
       };
     }
 
@@ -1086,19 +939,24 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.setItem('queen_2fa_enabled', 'true');
 
     try {
-      await setDoc(doc(db, 'admins', 'heroch94'), {
-        email: adminEmail,
-        isTwoFactorEnabled: true,
-        twoFactorSecret: cleanSecret,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      await setDoc(
+        doc(db, 'admins', 'heroch94'),
+        {
+          email: adminEmail,
+          isTwoFactorEnabled: true,
+          twoFactorSecret: cleanSecret,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
     } catch (e) {
       console.warn('Firestore 2fa save fallback:', e);
     }
 
     return {
       success: true,
-      message: '2FA Google Authenticator berhasil diaktifkan dan terhubung ke HP Anda!'
+      message:
+        '2FA Google Authenticator berhasil diaktifkan dan terhubung ke HP Anda!',
     };
   };
 
@@ -1106,10 +964,14 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsTwoFactorEnabled(false);
     localStorage.setItem('queen_2fa_enabled', 'false');
     try {
-      await setDoc(doc(db, 'admins', 'heroch94'), {
-        isTwoFactorEnabled: false,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      await setDoc(
+        doc(db, 'admins', 'heroch94'),
+        {
+          isTwoFactorEnabled: false,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
     } catch (e) {
       console.warn('Firestore 2fa disable fallback:', e);
     }
@@ -1121,7 +983,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const getOtpAuthUri = (secretStr?: string): string => {
-    const s = (secretStr || twoFactorSecret || 'JBSWY3DPEHPK3PXP').replace(/[\s-]/g, '').toUpperCase();
+    const s = (secretStr || twoFactorSecret || 'JBSWY3DPEHPK3PXP')
+      .replace(/[\s-]/g, '')
+      .toUpperCase();
     const totp = new OTPAuth.TOTP({
       issuer: 'Queen Photo Pontianak',
       label: adminEmail || 'queenphotomedia@gmail.com',
@@ -1134,41 +998,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const seedFirestoreDataNow = async () => {
-    setIsSyncing(true);
-    try {
-      await setDoc(doc(db, 'studio_settings', 'general'), {
-        monthlyRevenueTarget,
-        updatedAt: new Date().toISOString(),
-        studioName: 'Queen Photo Pontianak',
-        foundingYear: 1980,
-      });
-
-      await setDoc(doc(db, 'test', 'connection'), {
-        status: 'CONNECTED',
-        timestamp: new Date().toISOString(),
-        appletId: '009ecc42-7075-40e2-bda1-c76643f190a5',
-      });
-
-
-
-      for (const svc of services) {
-        await setDoc(doc(db, 'services', svc.id), svc);
-      }
-
-      for (const invItem of inventory) {
-        await setDoc(doc(db, 'inventory', invItem.id), invItem);
-      }
-
-
-
-      setIsFirebaseConnected(true);
-      alert('Berhasil! Seluruh data pesanan, inventaris, menu layanan, dan survei pasar tersimpan permanen di Cloud Firestore.');
-    } catch (err) {
-      console.error('Error seeding data to Firestore:', err);
-      alert(`Pemberitahuan Firestore: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setIsSyncing(false);
-    }
+    throw new Error(
+      'Data stok dibaca langsung dari database. Tambahkan bahan atau stok melalui Inventaris; penulisan ulang massal dinonaktifkan.',
+    );
   };
 
   return (
@@ -1179,6 +1011,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         rollConfigs,
         sheetConfigs,
         inventory,
+        inventoryReady,
+        recordInventoryCount,
+        createInventoryItem,
         stockLogs,
         currentView,
         setCurrentView,
@@ -1196,6 +1031,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updateOrderStatus,
         updateOrderPayment,
         deleteOrder,
+        reconcileStock,
         restockItem,
         updateRollConfig,
         updateSheetConfig,

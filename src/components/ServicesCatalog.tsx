@@ -1,3 +1,4 @@
+import { ServiceArtwork } from './ServiceArtwork';
 import React, { useEffect, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { formatRupiah } from '../utils/formatters';
@@ -117,6 +118,10 @@ export const ServicesCatalog: React.FC = () => {
             );
             return (
               <article key={service.id} className="qp-service-card">
+                <ServiceArtwork
+                  category={service.category}
+                  className="h-36 rounded-lg mb-5"
+                />
                 <div className="flex items-center justify-between gap-3">
                   <span className="w-11 h-11 flex items-center justify-center rounded-xl bg-stone-100 text-stone-700">
                     <Icon size={21} strokeWidth={1.5} />

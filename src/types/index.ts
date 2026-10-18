@@ -1,14 +1,28 @@
 export type UserRole = 'CUSTOMER' | 'ADMIN';
 
-export type ServiceCategory = 
-  | 'cetak_foto' 
-  | 'pas_foto' 
+export type ServiceCategory =
+  | 'cetak_foto'
+  | 'pas_foto'
   | 'photostrip_polaroid'
-  | 'foto_studio' 
-  | 'restorasi_edit' 
-  | 'merchandise' 
+  | 'foto_studio'
+  | 'restorasi_edit'
+  | 'merchandise'
   | 'banner';
 
+export interface StockUsage {
+  inventoryId: string;
+  quantity: number;
+}
+export interface StaffStamp {
+  uid: string;
+  name: string;
+}
+export interface OrderEvent {
+  type: 'created' | 'status' | 'payment' | 'cancelled';
+  at: string;
+  by: StaffStamp;
+  detail: string;
+}
 export interface ServiceItem {
   id: string;
   name: string;
@@ -16,6 +30,8 @@ export interface ServiceItem {
   description: string;
   basePrice: number;
   estimatedCost: number; // HPP
+  stockMode?: 'automatic' | 'none';
+  materialUsage?: StockUsage[];
   paperType?: 'sheet' | 'roll' | 'merchandise' | 'service';
   unit: string;
   popular?: boolean;
@@ -29,22 +45,32 @@ export interface ServiceItem {
   };
 }
 
-export type PaperFinish = 'Glossy Anti-Luntur' | 'Doff Matte' | 'Silk / Luster' | 'Kanvas Tekstur Roll';
-export type FrameOption = 'Tanpa Bingkai' | 'Minimalis Hitam' | 'Minimalis Putih' | 'Kayu Jati Elegan' | 'Ukiran Emas Klasik';
+export type PaperFinish =
+  | 'Glossy Anti-Luntur'
+  | 'Doff Matte'
+  | 'Silk / Luster'
+  | 'Kanvas Tekstur Roll';
+export type FrameOption =
+  | 'Tanpa Bingkai'
+  | 'Minimalis Hitam'
+  | 'Minimalis Putih'
+  | 'Kayu Jati Elegan'
+  | 'Ukiran Emas Klasik';
 
-export type DeliveryMethod = 
+export type DeliveryMethod =
   | 'AMBIL_STUDIO'
   | 'GRAB_EXPRESS_PONTIANAK'
   | 'EKSPEDISI_KALBAR';
 
-export type PaymentMethod = 
+export type PaymentMethod =
   | 'QRIS'
+  | 'TRANSFER_BANK'
   | 'TRANSFER_BCA'
   | 'TRANSFER_MANDIRI'
   | 'TRANSFER_BRI'
   | 'TUNAI_KASIR';
 
-export type OrderStatus = 
+export type OrderStatus =
   | 'MENUNGGU_BAYAR'
   | 'ANTREAN_DESAIN'
   | 'PROSES_CETAK'
@@ -74,6 +100,7 @@ export interface StockLog {
   newStock: number;
   reason: string;
   orderId?: string;
+  by?: StaffStamp;
 }
 
 export type OrderChannel = 'ONLINE' | 'WALKIN';
@@ -99,6 +126,22 @@ export interface Order {
   id: string; // e.g., QP-2610-001
   createdAt: string;
   ownerUid?: string;
+  workflowVersion?: 2;
+  recordedBy?: StaffStamp;
+  paymentVerifiedBy?: StaffStamp;
+  paidAt?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  inventoryStatus?:
+    | 'PENDING'
+    | 'DEDUCTED'
+    | 'RELEASED'
+    | 'WASTED'
+    | 'NEEDS_REVIEW'
+    | 'NOT_REQUIRED';
+  materialUsage?: StockUsage[];
+  inventoryWarnings?: string[];
+  history?: OrderEvent[];
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
@@ -155,4 +198,3 @@ export interface CustomerFeedbackSurvey {
   feedbackText?: string;
   claimedDiscountCode?: string;
 }
-

@@ -4,6 +4,7 @@ import { Order } from '../types';
 import {
   formatRupiah,
   formatDateTime,
+  formatPaymentMethod,
   createWhatsAppOrderLink,
 } from '../utils/formatters';
 import { X, Printer, MessageSquare, Check } from 'lucide-react';
@@ -152,7 +153,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <div className="flex justify-between text-[11px] text-stone-600 pt-1">
               <span>Metode Bayar:</span>
               <span>
-                {order.paymentMethod.replace(/_/g, ' ')} ({order.paymentStatus})
+                {formatPaymentMethod(order.paymentMethod)} (
+                {order.paymentStatus})
               </span>
             </div>
           </div>
