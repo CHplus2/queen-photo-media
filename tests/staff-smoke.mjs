@@ -26,10 +26,10 @@ try {
     const fixture = `import React from '${reactURL}';const {createContext,useContext,useState}=React;
  const C=createContext(null);const services=[{id:'prints',name:'Cetak 4R',category:'cetak_foto',description:'Foto standar',basePrice:5000,estimatedCost:1000,unit:'lembar',stockMode:'automatic',materialUsage:[{inventoryId:'paper',quantity:.102}]},{id:'passport',name:'Pas foto',category:'pas_foto',description:'Paket pas foto',basePrice:25000,estimatedCost:5000,unit:'paket',stockMode:'none'}];
  export function StudioProvider({children}){const [view,setView]=useState('pos');const [orders,setOrders]=useState([]);const [cart,setCart]=useState([]);const [open,setOpen]=useState(false);const now=()=>new Date().toISOString();const by={uid:'test',name:'Staff Uji'};
- const value={services,orders,cart,setIsCartOpen:setOpen,isCartOpen:open,activeRole:'ADMIN',isAdminAuthenticated:true,currentView:view,setCurrentView:setView,setActiveRole:()=>{},logoutAdmin:async()=>{},monthlyRevenueTarget:30000000,inventoryReady:true,isFirebaseConnected:true,stockLogs:[],inventory:[{id:'paper',name:'Kertas foto',currentStock:10,maxStock:20,lowStockThreshold:2,unit:'meter',type:'ROLL',costPerUnit:1}],rollConfigs:[],sheetConfigs:[],surveys:[],adminEmail:'test@example.test',
- addOrder:async(data,id)=>{window.__saveCalls=(window.__saveCalls||0)+1;await new Promise(r=>setTimeout(r,120));const order={...data,id:'QP-'+id,createdAt:now(),recordedBy:by,workflowVersion:2,inventoryStatus:data.orderStatus==='SELESAI'?'DEDUCTED':'PENDING',...(data.paymentStatus==='LUNAS'?{paidAt:now(),paymentVerifiedBy:by}:{}),history:[]};setOrders(old=>[order,...old]);window.__lastSale=order;return order;},
+ const value={services,orders,cart,setIsCartOpen:setOpen,isCartOpen:open,activeRole:'ADMIN',isAdminAuthenticated:true,isSupervisor:!window.__cashierOnly,currentView:view,setCurrentView:setView,setActiveRole:()=>{},logoutAdmin:async()=>{},monthlyRevenueTarget:30000000,inventoryReady:true,isFirebaseConnected:true,stockLogs:[],inventory:[{id:'paper',name:'Kertas foto',currentStock:10,maxStock:20,lowStockThreshold:2,unit:'meter',type:'ROLL',costPerUnit:1}],rollConfigs:[],sheetConfigs:[],surveys:[],adminEmail:'test@example.test',
+ addOrder:async(data,id)=>{window.__saveCalls=(window.__saveCalls||0)+1;await new Promise(r=>setTimeout(r,120));const order={...data,id:'QP-'+id,createdAt:now(),payments:data.initialPaymentAmount>0?[{id:'initial',amount:data.initialPaymentAmount,method:data.paymentMethod,at:now(),by}]:[],recordedBy:by,workflowVersion:2,inventoryStatus:data.orderStatus==='SELESAI'?'DEDUCTED':'PENDING',...(data.paymentStatus==='LUNAS'?{paidAt:now(),paymentVerifiedBy:by}:{}),history:[]};setOrders(old=>[order,...old]);window.__lastSale=order;return order;},
  updateOrderStatus:async(id,status,cancel)=>{window.__lastStatus={id,status,cancel};setOrders(old=>old.map(o=>o.id===id?{...o,orderStatus:status,cancellationReason:cancel?.reason,cancelledAt:status==='DIBATALKAN'?now():undefined}:o));},
- updateOrderPayment:async(id,paymentStatus)=>{window.__lastPayment={id,paymentStatus};setOrders(old=>old.map(o=>o.id===id?{...o,paymentStatus,paidAt:now(),paymentVerifiedBy:by}:o));},
+ updateOrderPayment:async(id,paymentStatus,payment)=>{window.__lastPayment={id,paymentStatus};setOrders(old=>old.map(o=>o.id===id?{...o,paymentStatus,payments:[...(o.payments||[]),{id:payment.id,amount:payment.amount,method:payment.method,at:now(),by}],paidAt:now(),paymentVerifiedBy:by}:o));},
  reconcileStock:async()=>{},recordInventoryCount:async()=>{},createInventoryItem:async()=>{},updateService:async()=>{},triggerPasswordReset:async()=>{},setMonthlyRevenueTarget:()=>{},setIsSurveyModalOpen:()=>{},setIsOrderModalOpen:()=>{},restockItem:async()=>{},clearCart:()=>setCart([])};
  return React.createElement(C.Provider,{value},children);}export function useStudio(){return useContext(C);}`;
     await page.route('**/src/context/StudioContext.tsx*', (r) =>
@@ -42,6 +42,30 @@ try {
       .getByRole('spinbutton', { name: 'Jumlah', exact: true })
       .first()
       .fill('2');
+    await page
+      .getByRole('spinbutton', {
+        name: 'Uang diterima (Rp, untuk hitung kembalian)',
+      })
+      .fill('50000');
+    await page.getByText(/Kembalian Rp/).waitFor();
+    assert.match(
+      await page.getByText(/Kembalian Rp/).textContent(),
+      /15[.]000/,
+    );
+    // An interrupted shift/browser restart must retain the same sale request ID.
+    const draftBefore = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('queen_staff_sale_staff')),
+    );
+    await page.reload();
+    await page
+      .getByRole('button', { name: 'Simpan penjualan', exact: true })
+      .waitFor();
+    const draftAfter = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('queen_staff_sale_staff')),
+    );
+    assert.equal(draftAfter.requestId, draftBefore.requestId);
+    assert.equal(draftAfter.items.length, 2);
+    assert.equal(draftAfter.cashTendered, '50000');
     if (process.env.UI_ARTIFACT_DIR)
       await page.screenshot({
         path: process.env.UI_ARTIFACT_DIR + '/cashier-' + width + '.png',
@@ -122,6 +146,24 @@ try {
       'SELESAI',
     );
     await page.keyboard.press('Escape');
+    await nav('Kasir');
+    await page.getByRole('button', { name: /Pas foto Rp/ }).click();
+    await page.getByRole('checkbox', { name: 'Bayar sebagian / DP' }).check();
+    await page
+      .getByRole('spinbutton', { name: 'Pembayaran sekarang (Rp)' })
+      .fill('10000');
+    await page.getByText(/Sisa bayar Rp/).waitFor();
+    await page
+      .getByRole('textbox', { name: /Nama pelanggan/, exact: false })
+      .first()
+      .fill('Pelanggan DP');
+    await page
+      .getByRole('button', { name: 'Simpan penjualan', exact: true })
+      .click();
+    await page.getByRole('heading', { name: /Penjualan tersimpan/ }).waitFor();
+    const deposit = await page.evaluate(() => window.__lastSale);
+    assert.equal(deposit.paymentStatus, 'SEBAGIAN');
+    assert.equal(deposit.initialPaymentAmount, 10000);
     await nav('Ringkasan toko');
     await page
       .getByRole('heading', { name: 'Ringkasan toko', exact: true })
@@ -133,6 +175,35 @@ try {
           .getAttribute('href')
       ).startsWith('https://wa.me/?text='),
     );
+    await page
+      .getByText('Hitung uang & tutup kas hari ini', { exact: true })
+      .click();
+    await page
+      .getByRole('spinbutton', { name: 'Uang awal laci (Rp)', exact: true })
+      .fill('100000');
+    await page
+      .getByRole('spinbutton', {
+        name: 'Pengeluaran / refund tunai hari ini (Rp)',
+        exact: true,
+      })
+      .fill('5000');
+    await page
+      .getByRole('spinbutton', {
+        name: 'Uang tunai yang dihitung sekarang (Rp)',
+        exact: true,
+      })
+      .fill('140000');
+    await page
+      .getByRole('textbox', {
+        name: 'Catatan pengeluaran / selisih',
+        exact: true,
+      })
+      .fill('Beli plastik');
+    assert.match(
+      await page.getByText(/Kas seharusnya Rp/).textContent(),
+      /140[.]000/,
+    );
+    assert.match(await page.getByText(/Selisih Rp/).textContent(), /Rp\s*0/);
     if (process.env.UI_ARTIFACT_DIR)
       await page.screenshot({
         path: process.env.UI_ARTIFACT_DIR + '/owner-' + width + '.png',
@@ -174,10 +245,40 @@ try {
         [],
       );
     }
+    await page.addInitScript(() => {
+      window.__cashierOnly = true;
+    });
+    await page.reload();
+    await page.getByRole('heading', { name: 'Kasir', exact: true }).waitFor();
+    if (width < 1280)
+      await page
+        .getByRole('button', { name: 'Buka menu', exact: true })
+        .click();
+    const cashierNav = page.getByRole('navigation', {
+      name: width < 1280 ? 'Menu seluler' : 'Navigasi staf',
+    });
+    assert.equal(
+      await cashierNav
+        .getByRole('button', { name: 'Pengaturan', exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      await cashierNav
+        .getByRole('button', { name: 'Inventaris', exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      await cashierNav
+        .getByRole('button', { name: 'Penjualan hari ini', exact: true })
+        .count(),
+      1,
+    );
     console.log(
       'PASS ' +
         width +
-        'px: multi-item sale, optional customer, duplicate-click protection, unpaid deferred job, payment verification, ready/handover, owner recap. Test fixture only; no live writes.',
+        'px: cash change, recovered draft ID, deposit, multi-item sale, duplicate protection, deferred job, payment verification, ready/handover, owner recap, cashier navigation. Test fixture only; no live writes.',
     );
     await context.close();
   }

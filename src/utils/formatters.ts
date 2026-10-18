@@ -1,3 +1,4 @@
+import { paidAmount, remainingAmount } from './payments';
 import { businessDate, reportableOrders, salesSummary } from './sales';
 import { Order, PaymentMethod } from '../types';
 
@@ -92,6 +93,7 @@ export function createWhatsAppOrderLink(order: Order): string {
   msg += `Nomor Pesanan: *#${order.id}*\n`;
   msg += `Status: *${order.orderStatus.replace(/_/g, ' ')}*\n`;
   msg += `Metode Pembayaran: *${formatPaymentMethod(order.paymentMethod)}* (${order.paymentStatus})\n`;
+  msg += `Sudah dibayar: *${formatRupiah(paidAmount(order))}* · Sisa bayar: *${formatRupiah(remainingAmount(order))}*\n`;
   msg += `Metode Pengiriman: *${order.deliveryMethod === 'GRAB_EXPRESS_PONTIANAK' ? 'GrabExpress Pontianak' : order.deliveryMethod === 'AMBIL_STUDIO' ? 'Ambil di Studio (Gajah Mada)' : 'Ekspedisi Kalbar'}*\n\n`;
   msg += `*Rincian Pesanan:*\n`;
   order.items.forEach((item) => {

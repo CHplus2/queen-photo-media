@@ -1,3 +1,4 @@
+import { paidAmount, remainingAmount } from '../utils/payments';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { useDialog } from '../hooks/useDialog';
@@ -19,14 +20,23 @@ const statusText: Record<string, string> = {
 export const StaffOrderQueue: React.FC<{
   onPrintReceipt: (order: Order) => void;
 }> = ({ onPrintReceipt }) => {
-  const { orders, updateOrderStatus, updateOrderPayment, reconcileStock } =
-    useStudio();
+  const {
+    orders,
+    updateOrderStatus,
+    updateOrderPayment,
+    reconcileStock,
+    isSupervisor,
+  } = useStudio();
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState('active');
   const [selected, setSelected] = useState<string | null>(null);
   const [cancel, setCancel] = useState(false);
   const [reason, setReason] = useState('');
   const [materials, setMaterials] = useState<'unused' | 'used'>('used');
+  const [paymentInput, setPaymentInput] = useState('');
+  const [paymentMethod, setPaymentMethod] =
+    useState<Order['paymentMethod']>('TUNAI_KASIR');
+  const [paymentId, setPaymentId] = useState(() => crypto.randomUUID());
   const [verify, setVerify] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -56,6 +66,8 @@ export const StaffOrderQueue: React.FC<{
       await callback();
       setCancel(false);
       setVerify(false);
+      setPaymentInput('');
+      setPaymentId(crypto.randomUUID());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Perubahan belum tersimpan.');
     } finally {
@@ -111,7 +123,9 @@ export const StaffOrderQueue: React.FC<{
             <p className="text-xs text-stone-600 mt-1">
               {o.paymentStatus === 'LUNAS'
                 ? 'Pembayaran diterima'
-                : 'Pembayaran perlu diperiksa'}
+                : o.paymentStatus === 'SEBAGIAN'
+                  ? `Bayar sebagian · Sisa ${formatRupiah(remainingAmount(o))}`
+                  : 'Belum dibayar'}
             </p>
             <ul className="text-sm text-stone-600 mt-4 space-y-1">
               {o.items.map((i) => (
@@ -183,7 +197,11 @@ export const StaffOrderQueue: React.FC<{
             <div className="qp-dialog-content space-y-5">
               <p className="qp-notice">
                 {statusText[order.orderStatus]} ·{' '}
-                {order.paymentStatus === 'LUNAS' ? 'Lunas' : 'Belum dibayar'}
+                {order.paymentStatus === 'LUNAS'
+                  ? 'Lunas'
+                  : order.paymentStatus === 'SEBAGIAN'
+                    ? 'Bayar sebagian'
+                    : 'Belum dibayar'}
               </p>
               <ul className="space-y-3">
                 {order.items.map((i) => (
@@ -203,6 +221,34 @@ export const StaffOrderQueue: React.FC<{
               <div className="flex justify-between border-t border-stone-200 pt-4 font-semibold">
                 <span>Total pesanan</span>
                 <span>{formatRupiah(order.totalAmount)}</span>
+              </div>
+              <div className="qp-notice">
+                <p>
+                  Dibayar {formatRupiah(paidAmount(order))} ·{' '}
+                  <strong>
+                    Sisa bayar {formatRupiah(remainingAmount(order))}
+                  </strong>
+                </p>
+                {order.payments?.length ? (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer">
+                      Riwayat uang masuk
+                    </summary>
+                    <ul className="space-y-2 mt-3">
+                      {order.payments.map((p) => (
+                        <li key={p.id} className="text-sm">
+                          {formatRupiah(p.amount)} ·{' '}
+                          {p.method === 'TUNAI_KASIR'
+                            ? 'Tunai'
+                            : p.method === 'QRIS'
+                              ? 'QRIS'
+                              : 'Transfer bank'}{' '}
+                          · {formatDateTime(p.at)} WIB · {p.by.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
               </div>
               {order.staffNotes && (
                 <p className="text-sm text-stone-600 break-words">
@@ -233,7 +279,8 @@ export const StaffOrderQueue: React.FC<{
                   . Jangan menganggap stok sudah dipotong.
                 </p>
               )}
-              {order.inventoryStatus === 'NEEDS_REVIEW' &&
+              {isSupervisor &&
+                order.inventoryStatus === 'NEEDS_REVIEW' &&
                 order.workflowVersion === 2 &&
                 ['PROSES_CETAK', 'SIAP_DIAMBIL_KIRIM', 'SELESAI'].includes(
                   order.orderStatus,
@@ -246,12 +293,32 @@ export const StaffOrderQueue: React.FC<{
                     Bahan sudah diatur — catat pemakaian
                   </button>
                 )}
+              {isSupervisor &&
+                order.inventoryStatus === 'NEEDS_REVIEW' &&
+                ['PROSES_CETAK', 'SIAP_DIAMBIL_KIRIM', 'SELESAI'].includes(
+                  order.orderStatus,
+                ) && (
+                  <button
+                    disabled={busy}
+                    className="qp-button qp-button-secondary w-full"
+                    onClick={() => {
+                      const reason = window.prompt(
+                        'Hanya jika saldo Inventaris sudah dihitung fisik SETELAH pesanan ini dibuat. Pemakaian pesanan ini sudah masuk dalam saldo tersebut. Isi catatan hitung fisik; stok tidak akan dipotong lagi.',
+                      );
+                      if (reason?.trim())
+                        action(() => reconcileStock(order.id, reason));
+                    }}
+                  >
+                    Saldo fisik sudah mencakup pesanan ini — selesaikan
+                    pemeriksaan
+                  </button>
+                )}
               {order.orderStatus === 'DIBATALKAN' && (
                 <p className="qp-notice">
                   Alasan:{' '}
                   {order.cancellationReason ||
                     'Tidak tercatat pada versi lama.'}
-                  {order.paymentStatus === 'LUNAS'
+                  {paidAmount(order) > 0
                     ? ' Pembayaran sudah diterima: periksa pengembalian dana secara terpisah.'
                     : ''}
                 </p>
@@ -262,7 +329,12 @@ export const StaffOrderQueue: React.FC<{
                     <button
                       disabled={busy}
                       className="qp-button w-full"
-                      onClick={() => setVerify(!verify)}
+                      onClick={() => {
+                        setVerify(!verify);
+                        setPaymentInput(String(remainingAmount(order)));
+                        setPaymentMethod(order.paymentMethod);
+                        setPaymentId(crypto.randomUUID());
+                      }}
                     >
                       Periksa pembayaran
                     </button>
@@ -274,14 +346,61 @@ export const StaffOrderQueue: React.FC<{
                           ? 'Pastikan uang tunai sudah diterima.'
                           : 'Periksa uang masuk pada aplikasi bank atau merchant QRIS. Screenshot pelanggan saja belum membuktikan pembayaran.'}
                       </p>
+                      <p>
+                        Sudah dibayar {formatRupiah(paidAmount(order))} · Sisa{' '}
+                        {formatRupiah(remainingAmount(order))}
+                      </p>
+                      <label className="block">
+                        <span className="qp-label">Jumlah uang masuk (Rp)</span>
+                        <input
+                          className="qp-field"
+                          type="number"
+                          min="1"
+                          max={remainingAmount(order)}
+                          step="1"
+                          value={paymentInput}
+                          onChange={(e) => setPaymentInput(e.target.value)}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="qp-label">
+                          Cara pembayaran uang masuk
+                        </span>
+                        <select
+                          className="qp-field"
+                          value={paymentMethod}
+                          onChange={(e) =>
+                            setPaymentMethod(
+                              e.target.value as Order['paymentMethod'],
+                            )
+                          }
+                        >
+                          <option value="TUNAI_KASIR">Tunai</option>
+                          <option value="QRIS">QRIS</option>
+                          <option value="TRANSFER_BANK">Transfer bank</option>
+                          {!['TUNAI_KASIR', 'QRIS', 'TRANSFER_BANK'].includes(
+                            paymentMethod,
+                          ) && (
+                            <option value={paymentMethod}>
+                              Transfer bank (lama)
+                            </option>
+                          )}
+                        </select>
+                      </label>
                       <button
                         disabled={busy}
                         className="qp-button w-full"
                         onClick={() =>
-                          action(() => updateOrderPayment(order.id, 'LUNAS'))
+                          action(() =>
+                            updateOrderPayment(order.id, 'LUNAS', {
+                              id: paymentId,
+                              amount: Number(paymentInput),
+                              method: paymentMethod,
+                            }),
+                          )
                         }
                       >
-                        Uang sudah masuk — tandai lunas <Check size={16} />
+                        Uang sudah masuk — simpan pembayaran <Check size={16} />
                       </button>
                     </div>
                   )}

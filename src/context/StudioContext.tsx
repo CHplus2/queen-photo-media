@@ -88,6 +88,7 @@ interface StudioContextType {
   activeRole: UserRole;
   setActiveRole: (role: UserRole) => void;
   isAdminAuthenticated: boolean;
+  isSupervisor: boolean;
   setIsAdminAuthenticated: (auth: boolean) => void;
   selectedServiceForOrder: ServiceItem | null;
   setSelectedServiceForOrder: (service: ServiceItem | null) => void;
@@ -106,9 +107,10 @@ interface StudioContextType {
   ) => Promise<void>;
   updateOrderPayment: (
     orderId: string,
-    paymentStatus: 'BELUM_BAYAR' | 'LUNAS',
+    paymentStatus: Order['paymentStatus'],
+    payment?: { id: string; amount: number; method: Order['paymentMethod'] },
   ) => Promise<void>;
-  reconcileStock: (orderId: string) => Promise<void>;
+  reconcileStock: (orderId: string, countedReason?: string) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
   restockItem: (
     itemId: string,
@@ -235,6 +237,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   // Role Separation
+  const [isSupervisor, setIsSupervisor] = useState(false);
   const [activeRole, setActiveRole] = useState<UserRole>('CUSTOMER');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(
     () => {
@@ -345,10 +348,12 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
     const unsubAuth = onAuthStateChanged(auth, async (usr) => {
       setFirebaseUser(usr);
       setIsAdminAuthenticated(false);
+      setIsSupervisor(false);
       setActiveRole('CUSTOMER');
       if (usr) {
         const token = await usr.getIdTokenResult();
         if (token.claims.staff === true) {
+          setIsSupervisor(token.claims.owner === true);
           setAdminEmail(usr.email || '');
           setIsAdminAuthenticated(true);
           setActiveRole('ADMIN');
@@ -356,6 +361,12 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     });
     return () => unsubAuth();
+  }, []);
+
+  useEffect(() => {
+    const offline = () => setIsFirebaseConnected(false);
+    window.addEventListener('offline', offline);
+    return () => window.removeEventListener('offline', offline);
   }, []);
 
   // Connect to Firestore Orders in Real-Time
@@ -375,8 +386,13 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
           );
       unsubscribe = onSnapshot(
         ordersColRef,
+        { includeMetadataChanges: true },
         (snapshot) => {
-          setIsFirebaseConnected(true);
+          setIsFirebaseConnected(
+            !snapshot.metadata.fromCache &&
+              !snapshot.metadata.hasPendingWrites &&
+              navigator.onLine,
+          );
 
           const firestoreOrders = snapshot.docs.map((snapshot) => {
             const order = { ...snapshot.data(), id: snapshot.id } as Order;
@@ -398,7 +414,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
           });
           setOrders(
             firestoreOrders.sort((a, b) =>
-              b.createdAt.localeCompare(a.createdAt),
+              String(b.createdAt || '').localeCompare(
+                String(a.createdAt || ''),
+              ),
             ),
           );
         },
@@ -755,16 +773,17 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const updateOrderPayment = async (
     id: string,
     paymentStatus: Order['paymentStatus'],
+    payment?: { id: string; amount: number; method: Order['paymentMethod'] },
   ) => {
     if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
-    const order = await verifyOrderPayment(id, paymentStatus);
+    const order = await verifyOrderPayment(id, paymentStatus, payment);
     setOrders((previous) =>
       previous.map((item) => (item.id === id ? order : item)),
     );
   };
-  const reconcileStock = async (id: string) => {
+  const reconcileStock = async (id: string, countedReason?: string) => {
     if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
-    const order = await reconcileMaterialUsage(id);
+    const order = await reconcileMaterialUsage(id, countedReason);
     setOrders((previous) =>
       previous.map((item) => (item.id === id ? order : item)),
     );
@@ -1020,6 +1039,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
         activeRole,
         setActiveRole,
         isAdminAuthenticated,
+        isSupervisor,
         setIsAdminAuthenticated,
         selectedServiceForOrder,
         setSelectedServiceForOrder,

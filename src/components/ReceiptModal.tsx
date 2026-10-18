@@ -1,3 +1,4 @@
+import { paidAmount, remainingAmount } from '../utils/payments';
 import React from 'react';
 import { useDialog } from '../hooks/useDialog';
 import { Order } from '../types';
@@ -148,13 +149,22 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <span>TOTAL AKHIR:</span>
               <span className="font-mono">
                 {formatRupiah(order.totalAmount)}
+                <span className="block text-sm font-normal">
+                  Dibayar {formatRupiah(paidAmount(order))} · Sisa{' '}
+                  {formatRupiah(remainingAmount(order))}
+                </span>
               </span>
             </div>
             <div className="flex justify-between text-[11px] text-stone-600 pt-1">
               <span>Metode Bayar:</span>
               <span>
                 {formatPaymentMethod(order.paymentMethod)} (
-                {order.paymentStatus})
+                {order.paymentStatus === 'SEBAGIAN'
+                  ? 'Bayar sebagian'
+                  : order.paymentStatus === 'LUNAS'
+                    ? 'Lunas'
+                    : 'Belum bayar'}
+                )
               </span>
             </div>
           </div>

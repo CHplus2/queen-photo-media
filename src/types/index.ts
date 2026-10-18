@@ -122,6 +122,14 @@ export interface OrderItem {
   photoFileName?: string;
 }
 
+export interface PaymentEntry {
+  id: string;
+  amount: number;
+  method: PaymentMethod;
+  at: string;
+  by: StaffStamp;
+}
+
 export interface Order {
   id: string; // e.g., QP-2610-001
   createdAt: string;
@@ -133,6 +141,7 @@ export interface Order {
   cancelledAt?: string;
   cancellationReason?: string;
   inventoryStatus?:
+    | 'COUNTED'
     | 'PENDING'
     | 'DEDUCTED'
     | 'RELEASED'
@@ -156,7 +165,10 @@ export interface Order {
   totalCost: number; // HPP
   totalProfit: number; // Untung Bersih
   paymentMethod: PaymentMethod;
-  paymentStatus: 'BELUM_BAYAR' | 'LUNAS';
+  paymentStatus: 'BELUM_BAYAR' | 'SEBAGIAN' | 'LUNAS';
+  payments?: PaymentEntry[];
+  initialPaymentAmount?: number;
+  stockExceptionReason?: string;
   orderStatus: OrderStatus;
   staffNotes?: string;
   trackingNumber?: string;

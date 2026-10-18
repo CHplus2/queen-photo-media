@@ -1,3 +1,4 @@
+import { auth } from '../lib/firebase';
 import React, { useEffect, useRef, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import type { Order, OrderItem, PaymentMethod } from '../types';
@@ -24,8 +25,16 @@ interface Draft {
   payment: PaymentMethod;
   received: boolean;
   requestId: string;
+  cashTendered: string;
+  partial: boolean;
+  paymentAmount: string;
+  stockExceptionReason: string;
 }
 const freshDraft = (): Draft => ({
+  cashTendered: '',
+  partial: false,
+  paymentAmount: '',
+  stockExceptionReason: '',
   items: [],
   name: '',
   phone: '',
@@ -39,9 +48,14 @@ const freshDraft = (): Draft => ({
 const loadDraft = (): Draft => {
   try {
     const draft = JSON.parse(
-      sessionStorage.getItem('queen_staff_sale') || 'null',
+      localStorage.getItem(
+        `queen_staff_sale_${auth.currentUser?.uid || 'staff'}`,
+      ) ||
+        sessionStorage.getItem('queen_staff_sale') ||
+        'null',
     );
-    if (draft?.requestId && Array.isArray(draft.items)) return draft;
+    if (draft?.requestId && Array.isArray(draft.items))
+      return { ...freshDraft(), ...draft };
   } catch {}
   return freshDraft();
 };
@@ -49,23 +63,64 @@ export const AdminPosView: React.FC<{
   onPrintReceipt: (order: Order) => void;
   initialTab?: 'sale' | 'queue';
 }> = ({ onPrintReceipt, initialTab = 'sale' }) => {
-  const { services, addOrder, setCurrentView, isFirebaseConnected } =
-    useStudio();
+  const {
+    services,
+    addOrder,
+    setCurrentView,
+    isFirebaseConnected,
+    isSupervisor,
+  } = useStudio();
   const [tab, setTab] = useState<'sale' | 'queue'>(initialTab);
   useEffect(() => setTab(initialTab), [initialTab]);
   const [draft, setDraft] = useState<Draft>(loadDraft);
   const [search, setSearch] = useState('');
+  const [saleFormVisible, setSaleFormVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState<Order | null>(null);
   const lock = useRef(false);
   useEffect(() => {
-    sessionStorage.setItem('queen_staff_sale', JSON.stringify(draft));
+    try {
+      localStorage.setItem(
+        `queen_staff_sale_${auth.currentUser?.uid || 'staff'}`,
+        JSON.stringify(draft),
+      );
+      sessionStorage.removeItem('queen_staff_sale');
+    } catch {
+      setError(
+        'Tidak dapat menyimpan draf di perangkat. Jangan tutup halaman sebelum penjualan tersimpan.',
+      );
+    }
   }, [draft]);
   const total = draft.items.reduce(
     (n, item) => n + item.quantity * item.unitPrice,
     0,
   );
+  const paymentAmount = draft.received
+    ? draft.partial
+      ? Number(draft.paymentAmount)
+      : total
+    : 0;
+  const isPaid = draft.received && paymentAmount >= total;
+  useEffect(() => {
+    const guard = (event: BeforeUnloadEvent) => {
+      if (draft.items.length) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [draft.items.length]);
+  useEffect(() => {
+    const form = document.getElementById('staff-sale-form');
+    if (!form) return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setSaleFormVisible(entry.isIntersecting),
+    );
+    observer.observe(form);
+    return () => observer.disconnect();
+  }, [tab, draft.items.length]);
   const active = services.filter(
     (s) =>
       s.isActive !== false &&
@@ -105,7 +160,7 @@ export const AdminPosView: React.FC<{
     e.preventDefault();
     if (lock.current) return;
     setError('');
-    if ((draft.later || !draft.received) && !draft.name.trim()) {
+    if ((draft.later || !isPaid) && !draft.name.trim()) {
       setError(
         'Isi nama pelanggan untuk pesanan nanti atau pembayaran yang belum diterima.',
       );
@@ -115,6 +170,22 @@ export const AdminPosView: React.FC<{
     setBusy(true);
     try {
       const totals = validateSale(draft.items);
+      if (
+        draft.received &&
+        (!Number.isSafeInteger(paymentAmount) ||
+          paymentAmount <= 0 ||
+          paymentAmount > totals.subtotal)
+      )
+        throw new Error(
+          'Isi jumlah pembayaran yang benar, tidak melebihi total.',
+        );
+      if (
+        draft.payment === 'TUNAI_KASIR' &&
+        draft.received &&
+        draft.cashTendered !== '' &&
+        Number(draft.cashTendered) < paymentAmount
+      )
+        throw new Error('Uang diterima kurang dari pembayaran yang dicatat.');
       const order = await addOrder(
         {
           customerName: draft.name.trim() || 'Pelanggan umum',
@@ -126,7 +197,15 @@ export const AdminPosView: React.FC<{
           ...totals,
           totalAmount: totals.subtotal,
           paymentMethod: draft.payment,
-          paymentStatus: draft.received ? 'LUNAS' : 'BELUM_BAYAR',
+          paymentStatus: isPaid
+            ? 'LUNAS'
+            : paymentAmount > 0
+              ? 'SEBAGIAN'
+              : 'BELUM_BAYAR',
+          initialPaymentAmount: paymentAmount,
+          stockExceptionReason: !draft.later
+            ? draft.stockExceptionReason.trim() || undefined
+            : undefined,
           orderStatus: draft.later ? 'ANTREAN_DESAIN' : 'SELESAI',
           staffNotes: draft.notes.trim() || undefined,
           estimatedReadyTime: draft.due || undefined,
@@ -165,10 +244,11 @@ export const AdminPosView: React.FC<{
           className="qp-button qp-button-secondary"
           onClick={() => setCurrentView('supervision')}
         >
-          Ringkasan toko <ArrowRight size={16} />
+          {isSupervisor ? 'Ringkasan toko' : 'Penjualan hari ini'}{' '}
+          <ArrowRight size={16} />
         </button>
       </div>
-      {tab === 'sale' && draft.items.length > 0 && (
+      {tab === 'sale' && draft.items.length > 0 && !saleFormVisible && (
         <aside
           className="lg:hidden fixed bottom-4 left-4 right-4 z-40"
           aria-label="Akses rincian penjualan"
@@ -210,15 +290,17 @@ export const AdminPosView: React.FC<{
                   <p className="text-sm text-stone-600 mt-1">
                     {saved.paymentStatus === 'LUNAS'
                       ? 'Pembayaran dicatat diterima.'
-                      : 'Pembayaran masih menunggu konfirmasi.'}{' '}
+                      : saved.paymentStatus === 'SEBAGIAN'
+                        ? `DP tercatat ${formatRupiah(saved.payments?.reduce((n, p) => n + p.amount, 0) || saved.initialPaymentAmount || 0)}. Sisa bayar tersedia di Pesanan.`
+                        : 'Pembayaran belum diterima.'}{' '}
                     {saved.orderStatus === 'SELESAI'
                       ? 'Tidak perlu memperbarui status kerja.'
                       : 'Tersedia di daftar tindak lanjut.'}
                   </p>
                   {saved.inventoryStatus === 'NEEDS_REVIEW' && (
                     <p className="text-sm text-amber-900 mt-2">
-                      Bahan belum dipotong: pemakaian layanan perlu diatur di
-                      Inventaris.
+                      Bahan belum dipotong. Penanggung jawab perlu memeriksa
+                      pemakaian atau pengecualian stok.
                     </p>
                   )}
                   <p className="text-xs text-stone-500 break-all mt-2">
@@ -356,6 +438,34 @@ export const AdminPosView: React.FC<{
                                 Harga satuan {formatRupiah(item.unitPrice)} ·
                                 Ubah
                               </summary>
+                              {(services.find((s) => s.id === item.serviceId)
+                                ?.options?.sizes?.length || 0) > 1 && (
+                                <label className="block mt-3 text-left">
+                                  <span className="qp-label">
+                                    Ukuran — periksa harga setelah mengubah
+                                  </span>
+                                  <select
+                                    className="qp-field"
+                                    value={item.size}
+                                    onChange={(e) =>
+                                      setDraft((d) => ({
+                                        ...d,
+                                        items: d.items.map((i) =>
+                                          i.id === item.id
+                                            ? { ...i, size: e.target.value }
+                                            : i,
+                                        ),
+                                      }))
+                                    }
+                                  >
+                                    {services
+                                      .find((s) => s.id === item.serviceId)
+                                      ?.options?.sizes?.map((size) => (
+                                        <option key={size}>{size}</option>
+                                      ))}
+                                  </select>
+                                </label>
+                              )}
                               <label className="block mt-3 text-left">
                                 <span className="qp-label">
                                   Harga satuan (Rp)
@@ -412,6 +522,7 @@ export const AdminPosView: React.FC<{
                               ...d,
                               payment: id,
                               received: id === 'TUNAI_KASIR',
+                              cashTendered: '',
                             }))
                           }
                         />
@@ -437,6 +548,110 @@ export const AdminPosView: React.FC<{
                       </span>
                     </span>
                   </label>
+                  {draft.received && (
+                    <div className="space-y-3 mt-4">
+                      <label className="flex gap-3 items-center text-sm">
+                        <input
+                          type="checkbox"
+                          checked={draft.partial}
+                          onChange={(e) =>
+                            setDraft((d) => ({
+                              ...d,
+                              partial: e.target.checked,
+                              cashTendered: '',
+                            }))
+                          }
+                        />
+                        Bayar sebagian / DP
+                      </label>
+                      {draft.partial && (
+                        <label className="block">
+                          <span className="qp-label">
+                            Pembayaran sekarang (Rp)
+                          </span>
+                          <input
+                            className="qp-field"
+                            type="number"
+                            min="1"
+                            max={Math.max(0, total)}
+                            step="1"
+                            required
+                            value={draft.paymentAmount}
+                            onChange={(e) =>
+                              setDraft((d) => ({
+                                ...d,
+                                paymentAmount: e.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                      )}
+                      {draft.payment === 'TUNAI_KASIR' && (
+                        <>
+                          <label className="block">
+                            <span className="qp-label">
+                              Uang diterima (Rp, untuk hitung kembalian)
+                            </span>
+                            <input
+                              className="qp-field"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={draft.cashTendered}
+                              onChange={(e) =>
+                                setDraft((d) => ({
+                                  ...d,
+                                  cashTendered: e.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {[paymentAmount, 20000, 50000, 100000]
+                              .filter(
+                                (n, i, a) =>
+                                  n > 0 &&
+                                  n >= paymentAmount &&
+                                  a.indexOf(n) === i,
+                              )
+                              .map((n) => (
+                                <button
+                                  type="button"
+                                  className="qp-button qp-button-secondary !px-3 !py-2"
+                                  key={n}
+                                  onClick={() =>
+                                    setDraft((d) => ({
+                                      ...d,
+                                      cashTendered: String(n),
+                                    }))
+                                  }
+                                >
+                                  {n === paymentAmount
+                                    ? 'Uang pas'
+                                    : formatRupiah(n)}
+                                </button>
+                              ))}
+                          </div>
+                          {draft.cashTendered !== '' && (
+                            <p
+                              role="status"
+                              className="qp-notice text-lg font-semibold"
+                            >
+                              {Number(draft.cashTendered) >= paymentAmount
+                                ? `Kembalian ${formatRupiah(Number(draft.cashTendered) - paymentAmount)}`
+                                : `Uang kurang ${formatRupiah(paymentAmount - Number(draft.cashTendered))}`}
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {draft.partial && (
+                        <p className="qp-notice">
+                          Sisa bayar{' '}
+                          {formatRupiah(Math.max(0, total - paymentAmount))}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </fieldset>
                 <label className="flex items-start gap-3 border-t border-stone-200 pt-5 text-sm">
                   <input
@@ -453,7 +668,7 @@ export const AdminPosView: React.FC<{
                     </span>
                   </span>
                 </label>
-                {(draft.later || !draft.received) && (
+                {(draft.later || !isPaid) && (
                   <div className="space-y-4 bg-stone-50 rounded-xl p-4">
                     <label className="block">
                       <span className="qp-label">Nama pelanggan</span>
@@ -497,7 +712,7 @@ export const AdminPosView: React.FC<{
                     Catatan / nama pelanggan (opsional)
                   </summary>
                   <div className="space-y-3 mt-3">
-                    {!draft.later && draft.received && (
+                    {!draft.later && isPaid && (
                       <label className="block">
                         <span className="qp-label">Nama pelanggan</span>
                         <input
@@ -524,6 +739,35 @@ export const AdminPosView: React.FC<{
                     </label>
                   </div>
                 </details>
+                {!draft.later && (
+                  <details>
+                    <summary className="text-sm cursor-pointer py-2">
+                      Stok tidak cocok? Catat pengecualian
+                    </summary>
+                    <p className="text-sm text-stone-600 my-2">
+                      Hanya jika barang benar-benar sudah dijual tetapi saldo
+                      stok salah. Penjualan disimpan tanpa pemotongan bahan dan
+                      muncul untuk pemeriksaan penanggung jawab.
+                    </p>
+                    <label>
+                      <span className="qp-label">
+                        Alasan pengecualian stok (kosongkan untuk pemotongan
+                        normal)
+                      </span>
+                      <input
+                        className="qp-field"
+                        maxLength={300}
+                        value={draft.stockExceptionReason}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            stockExceptionReason: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </details>
+                )}
                 {missing.length > 0 && (
                   <p className="text-xs text-amber-900">
                     Pemakaian bahan {missing.length} layanan belum diatur.

@@ -20,6 +20,12 @@ import {
   validateSale,
   saleFingerprint,
 } from '../utils/workflow';
+import {
+  paidAmount,
+  remainingAmount,
+  validatePayment,
+  paymentState,
+} from '../utils/payments';
 const clean = <T>(data: T): T => JSON.parse(JSON.stringify(data));
 function actor(): StaffStamp {
   if (!auth.currentUser) throw new Error('Silakan masuk kembali.');
@@ -95,6 +101,7 @@ async function trustedOrder(
       recordedBy: state.recordedBy,
       paidAt: state.paidAt,
       paymentVerifiedBy: state.paymentVerifiedBy,
+      payments: state.payments,
     };
   }
   const {
@@ -104,6 +111,7 @@ async function trustedOrder(
     recordedBy,
     paidAt,
     paymentVerifiedBy,
+    payments,
     ...safe
   } = order;
   return {
@@ -130,6 +138,7 @@ function writeOrder(transaction: Transaction, order: Order) {
       recordedBy: order.recordedBy,
       paidAt: order.paidAt,
       paymentVerifiedBy: order.paymentVerifiedBy,
+      payments: order.payments,
     }),
   );
 }
@@ -180,7 +189,25 @@ export async function saveWalkin(
         { type: 'created', at, by, detail: 'Penjualan walk-in dicatat' },
       ],
     });
-    if (order.paymentStatus === 'LUNAS') {
+    const initial =
+      orderData.initialPaymentAmount ??
+      (order.paymentStatus === 'LUNAS' ? order.totalAmount : 0);
+    if (initial) validatePayment(initial, order.totalAmount);
+    else if (initial !== 0) throw new Error('Jumlah pembayaran tidak valid.');
+    order.payments =
+      initial > 0
+        ? [
+            {
+              id: `initial-${requestId}`,
+              amount: initial,
+              method: order.paymentMethod,
+              at,
+              by,
+            },
+          ]
+        : [];
+    order.paymentStatus = paymentState(order.totalAmount, order.payments);
+    if (initial > 0) {
       order.paidAt = at;
       order.paymentVerifiedBy = by;
     }
@@ -188,7 +215,18 @@ export async function saveWalkin(
       const plan = await servicePlan(transaction, order);
       // Never partially deduct a job with an unknown recipe.
       order.inventoryWarnings = plan.missing;
-      if (plan.missing.length) order.inventoryStatus = 'NEEDS_REVIEW';
+      if (orderData.stockExceptionReason?.trim()) {
+        order.inventoryStatus = 'NEEDS_REVIEW';
+        order.inventoryWarnings = [
+          'Pengecualian stok: ' + orderData.stockExceptionReason.trim(),
+        ];
+        order.history!.push({
+          type: 'status',
+          at,
+          by,
+          detail: order.inventoryWarnings[0],
+        });
+      } else if (plan.missing.length) order.inventoryStatus = 'NEEDS_REVIEW';
       else {
         await moveStock(
           transaction,
@@ -276,6 +314,7 @@ export async function changeOrderStatus(
 export async function verifyOrderPayment(
   id: string,
   paymentStatus: Order['paymentStatus'],
+  payment?: { id: string; amount: number; method: Order['paymentMethod'] },
 ): Promise<Order> {
   const by = actor();
   const ref = doc(db, 'orders', id);
@@ -284,22 +323,55 @@ export async function verifyOrderPayment(
     if (!snapshot.exists()) throw new Error('Pesanan tidak ditemukan.');
     const order = await trustedOrder(transaction, snapshot.data() as Order);
     if (order.orderStatus === 'DIBATALKAN')
+      throw new Error('Pesanan dibatalkan; periksa pengembalian dana.');
+    if (payment && order.payments?.some((p) => p.id === payment.id)) {
+      const previous = order.payments.find((p) => p.id === payment.id)!;
+      if (
+        previous.amount !== payment.amount ||
+        previous.method !== payment.method
+      )
+        throw new Error('Nomor pembayaran sudah digunakan. Periksa riwayat.');
+      return order;
+    }
+    if (!payment && order.paymentStatus === paymentStatus) return order;
+    if (!payment && paymentStatus !== 'LUNAS')
       throw new Error(
-        'Pesanan dibatalkan; verifikasi pengembalian dana secara terpisah.',
+        'Pembayaran tidak dapat dihapus. Hubungi penanggung jawab untuk koreksi.',
       );
-    if (order.paymentStatus === paymentStatus) return order;
+    const amount = payment?.amount ?? remainingAmount(order);
+    validatePayment(amount, remainingAmount(order));
     const at = new Date().toISOString();
-    const patch = clean({
-      paymentStatus,
-      ...(paymentStatus === 'LUNAS'
-        ? { paymentVerifiedBy: by, paidAt: at }
-        : { paymentVerifiedBy: null, paidAt: null }),
+    const payments =
+      order.payments ||
+      (paidAmount(order) > 0
+        ? [
+            {
+              id: 'legacy',
+              amount: paidAmount(order),
+              method: order.paymentMethod,
+              at: order.paidAt || order.createdAt,
+              by: order.paymentVerifiedBy || by,
+            },
+          ]
+        : []);
+    payments.push({
+      id: payment?.id || `settle-${id}`,
+      amount,
+      method: payment?.method || order.paymentMethod,
+      at,
+      by,
+    });
+    const next: Order = {
+      ...order,
+      payments,
+      paymentStatus: paymentState(order.totalAmount, payments),
+      paidAt: at,
+      paymentVerifiedBy: by,
       history: [
         ...(order.history || []),
-        { type: 'payment', at, by, detail: paymentStatus },
+        { type: 'payment', at, by, detail: `Pembayaran Rp${amount}` },
       ],
-    });
-    const next = { ...order, ...patch } as Order;
+    };
     writeOrder(transaction, next);
     return next;
   });
@@ -368,14 +440,26 @@ export async function createMaterial(data: Omit<InventoryItem, 'id'>) {
     });
   });
 }
-export async function reconcileMaterialUsage(id: string): Promise<Order> {
+export async function reconcileMaterialUsage(
+  id: string,
+  countedReason?: string,
+): Promise<Order> {
+  if (
+    countedReason &&
+    !(await auth.currentUser?.getIdTokenResult())?.claims.owner
+  )
+    throw new Error('Izin pemilik diperlukan.');
   const by = actor();
   const ref = doc(db, 'orders', id);
   return runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(ref);
     if (!snapshot.exists()) throw new Error('Pesanan tidak ditemukan.');
     const order = await trustedOrder(transaction, snapshot.data() as Order);
-    if (['DEDUCTED', 'NOT_REQUIRED'].includes(order.inventoryStatus || ''))
+    if (
+      ['DEDUCTED', 'NOT_REQUIRED', 'COUNTED'].includes(
+        order.inventoryStatus || '',
+      )
+    )
       return order;
     if (
       order.workflowVersion !== 2 ||
@@ -387,6 +471,26 @@ export async function reconcileMaterialUsage(id: string): Promise<Order> {
       throw new Error(
         'Riwayat bahan perlu diperiksa manual; pesanan ini tidak dapat dipotong ulang otomatis.',
       );
+    if (countedReason?.trim()) {
+      const next: Order = {
+        ...order,
+        inventoryStatus: 'COUNTED',
+        inventoryWarnings: [],
+        history: [
+          ...(order.history || []),
+          {
+            type: 'status',
+            at: new Date().toISOString(),
+            by,
+            detail:
+              'Stok fisik sudah mencakup pemakaian ini; tanpa pemotongan ulang: ' +
+              countedReason.trim(),
+          },
+        ],
+      };
+      writeOrder(transaction, next);
+      return next;
+    }
     const plan = await servicePlan(transaction, order);
     if (plan.missing.length)
       throw new Error(`Atur pemakaian bahan: ${plan.missing.join(', ')}.`);
@@ -446,5 +550,45 @@ export async function recordStocktake(
       reason: `Hitung fisik: ${reason.trim()}`,
       by,
     });
+  });
+}
+
+export async function closeCashDrawer(data: {
+  day: string;
+  opening: number;
+  receipts: number;
+  cashOut: number;
+  counted: number;
+  receiptIds: string[];
+  note: string;
+}) {
+  const by = actor();
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(data.day) ||
+    [data.opening, data.receipts, data.cashOut, data.counted].some(
+      (n) => !Number.isSafeInteger(n) || n < 0,
+    )
+  )
+    throw new Error('Isi nominal kas dengan rupiah bulat, minimal Rp0.');
+  if (data.cashOut > 0 && !data.note.trim())
+    throw new Error('Jelaskan pengeluaran / pengembalian tunai.');
+  const ref = doc(db, 'cash_closings', data.day);
+  const expected = data.opening + data.receipts - data.cashOut;
+  return runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (snapshot.exists())
+      throw new Error(
+        'Kas tanggal ini sudah ditutup. Buka kembali ringkasan untuk melihat hasilnya.',
+      );
+    transaction.set(
+      ref,
+      clean({
+        ...data,
+        expected,
+        difference: data.counted - expected,
+        by,
+        at: new Date().toISOString(),
+      }),
+    );
   });
 }

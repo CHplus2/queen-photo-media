@@ -1,3 +1,4 @@
+import { paidAmount } from './payments';
 import type { Order } from '../types';
 import { businessDate, reportableOrders, salesSummary } from './sales';
 export function supervision(orders: Order[], day: string) {
@@ -8,8 +9,20 @@ export function supervision(orders: Order[], day: string) {
         businessDate(value) === day,
     );
   const today = orders.filter((o) => onDate(o.createdAt));
-  const payments = orders.filter(
-    (o) => o.paymentStatus === 'LUNAS' && onDate(o.paidAt || o.createdAt),
+  const payments = orders.flatMap((o) =>
+    o.payments
+      ? o.payments
+          .filter((p) => onDate(p.at))
+          .map((p) => ({
+            ...o,
+            id: `${o.id}:${p.id}`,
+            totalAmount: p.amount,
+            paymentMethod: p.method,
+            paidAt: p.at,
+          }))
+      : o.paymentStatus === 'LUNAS' && onDate(o.paidAt || o.createdAt)
+        ? [o]
+        : [],
   );
   return {
     today,
@@ -24,7 +37,7 @@ export function supervision(orders: Order[], day: string) {
         o.orderStatus === 'DIBATALKAN' && onDate(o.cancelledAt || o.createdAt),
     ),
     refundsToCheck: orders.filter(
-      (o) => o.orderStatus === 'DIBATALKAN' && o.paymentStatus === 'LUNAS',
+      (o) => o.orderStatus === 'DIBATALKAN' && paidAmount(o) > 0,
     ),
     materialReview: orders.filter(
       (o) =>

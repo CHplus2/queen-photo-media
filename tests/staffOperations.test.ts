@@ -216,3 +216,102 @@ test('a customer-supplied inventory flag cannot fabricate a stock restoration', 
     0,
   );
 });
+
+test('deposit and later mixed-method payments retain receipts and retry safely', async () => {
+  setup();
+  const sale = await saveWalkin(
+    { ...data(), paymentStatus: 'SEBAGIAN', initialPaymentAmount: 20000 },
+    'deposit',
+  );
+  assert.equal(sale.paymentStatus, 'SEBAGIAN');
+  assert.equal(sale.payments?.[0].amount, 20000);
+  const payment = { id: 'receipt-2', amount: 10000, method: 'QRIS' as const };
+  await verifyOrderPayment(sale.id, 'LUNAS', payment);
+  const retry = await verifyOrderPayment(sale.id, 'LUNAS', payment);
+  assert.equal(retry.payments?.length, 2);
+  assert.equal(retry.paymentStatus, 'SEBAGIAN');
+  await assert.rejects(
+    verifyOrderPayment(sale.id, 'LUNAS', { ...payment, amount: 15000 }),
+    /sudah digunakan/,
+  );
+  await assert.rejects(
+    verifyOrderPayment(sale.id, 'LUNAS', {
+      id: 'too-much',
+      amount: 25000,
+      method: 'QRIS',
+    }),
+    /sisa bayar/,
+  );
+  const final = await verifyOrderPayment(sale.id, 'LUNAS', {
+    id: 'receipt-3',
+    amount: 20000,
+    method: 'TRANSFER_BANK',
+  });
+  assert.equal(final.paymentStatus, 'LUNAS');
+  assert.equal(
+    final.payments?.reduce((n, p) => n + p.amount, 0),
+    50000,
+  );
+  assert.equal(store.read('inventory/paper').currentStock, 8.98);
+});
+test('stock exception preserves a completed sale without invented stock or restoration', async () => {
+  setup(0);
+  const sale = await saveWalkin(
+    {
+      ...data(),
+      stockExceptionReason: 'Saldo belum diperbarui, cetak sudah diberikan',
+    },
+    'exception',
+  );
+  assert.equal(sale.inventoryStatus, 'NEEDS_REVIEW');
+  assert.match(sale.inventoryWarnings![0], /Saldo belum/);
+  assert.equal(store.read('inventory/paper').currentStock, 0);
+  await changeOrderStatus(sale.id, 'DIBATALKAN', {
+    reason: 'Salah catat',
+    materials: 'unused',
+  });
+  assert.equal(store.read('inventory/paper').currentStock, 0);
+});
+test('cash drawer closing computes difference and prevents overwriting the day', async () => {
+  setup();
+  const { closeCashDrawer } = await import('../src/lib/staffOperations');
+  const closing = {
+    day: '2026-10-18',
+    opening: 100000,
+    receipts: 50000,
+    cashOut: 10000,
+    counted: 135000,
+    receiptIds: ['one'],
+    note: 'Beli perlengkapan',
+  };
+  await closeCashDrawer(closing);
+  assert.equal(store.read('cash_closings/2026-10-18').expected, 140000);
+  assert.equal(store.read('cash_closings/2026-10-18').difference, -5000);
+  await assert.rejects(closeCashDrawer(closing), /sudah ditutup/);
+  await assert.rejects(
+    closeCashDrawer({ ...closing, day: '2026-10-19', opening: -1 }),
+    /nominal/,
+  );
+});
+
+test('owner can resolve a stock exception already included in a physical count without double deduction', async () => {
+  setup(0);
+  const sale = await saveWalkin(
+    { ...data(), stockExceptionReason: 'Saldo lama' },
+    'counted',
+  );
+  store.seed('inventory/paper', {
+    ...store.read('inventory/paper'),
+    currentStock: 5,
+  });
+  const { reconcileMaterialUsage } = await import('../src/lib/staffOperations');
+  const resolved = await reconcileMaterialUsage(
+    sale.id,
+    'Sudah hitung setelah cetak',
+  );
+  assert.equal(resolved.inventoryStatus, 'COUNTED');
+  await reconcileMaterialUsage(sale.id);
+  await changeOrderStatus(sale.id, 'SIAP_DIAMBIL_KIRIM');
+  await changeOrderStatus(sale.id, 'SELESAI');
+  assert.equal(store.read('inventory/paper').currentStock, 5);
+});

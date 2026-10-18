@@ -95,7 +95,7 @@ export function inventoryAction(
   if (order.workflowVersion !== 2) return 'review';
   if (
     ['PROSES_CETAK', 'SIAP_DIAMBIL_KIRIM', 'SELESAI'].includes(next) &&
-    !['DEDUCTED', 'WASTED', 'NOT_REQUIRED'].includes(
+    !['DEDUCTED', 'WASTED', 'NOT_REQUIRED', 'COUNTED'].includes(
       order.inventoryStatus || '',
     )
   )
@@ -137,6 +137,8 @@ export function saleFingerprint(
     | 'orderStatus'
     | 'staffNotes'
     | 'estimatedReadyTime'
+    | 'initialPaymentAmount'
+    | 'stockExceptionReason'
   >,
 ) {
   return JSON.stringify({
@@ -147,6 +149,8 @@ export function saleFingerprint(
     paid: order.paymentStatus,
     status: order.orderStatus,
     notes: order.staffNotes || '',
+    initialPaymentAmount: order.initialPaymentAmount,
+    stockExceptionReason: order.stockExceptionReason,
     due: order.estimatedReadyTime || '',
   });
 }

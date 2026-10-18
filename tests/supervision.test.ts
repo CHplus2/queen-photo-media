@@ -51,3 +51,39 @@ test('legacy payment dates are explicitly counted and malformed dates do not cra
   assert.equal(report.legacyPayments, 1);
   assert.equal(report.today.length, 1);
 });
+
+test('deposits count on receipt date and retain their actual payment method', () => {
+  const order: Order = {
+    ...base,
+    paymentStatus: 'SEBAGIAN',
+    payments: [
+      {
+        id: 'cash-deposit',
+        amount: 20000,
+        method: 'TUNAI_KASIR',
+        at: '2026-10-18T03:00:00Z',
+        by: { uid: 's', name: 'Staff' },
+      },
+      {
+        id: 'qris-rest',
+        amount: 10000,
+        method: 'QRIS',
+        at: '2026-10-19T03:00:00Z',
+        by: { uid: 's', name: 'Staff' },
+      },
+    ],
+  };
+  const first = supervision([order], '2026-10-18');
+  assert.equal(first.payments.length, 1);
+  assert.equal(first.payments[0].totalAmount, 20000);
+  assert.equal(first.payments[0].paymentMethod, 'TUNAI_KASIR');
+  assert.equal(first.sales.revenue, 0);
+  const second = supervision([order], '2026-10-19');
+  assert.equal(second.payments[0].totalAmount, 10000);
+  assert.equal(second.pending.length, 1);
+  assert.equal(
+    supervision([{ ...order, orderStatus: 'DIBATALKAN' }], '2026-10-19')
+      .refundsToCheck.length,
+    1,
+  );
+});

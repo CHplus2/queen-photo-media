@@ -32,6 +32,7 @@ export const Header: React.FC = () => {
     activeRole,
     setActiveRole,
     isAdminAuthenticated,
+    isSupervisor,
     logoutAdmin,
     cart,
     setIsCartOpen,
@@ -63,7 +64,15 @@ export const Header: React.FC = () => {
       setCurrentView('pos');
     } else setLoginOpen(true);
   };
-  const links = staff ? staffLinks : customerLinks;
+  const links = staff
+    ? isSupervisor
+      ? staffLinks
+      : ([
+          ['pos', 'Kasir'],
+          ['orders', 'Pesanan'],
+          ['supervision', 'Penjualan hari ini'],
+        ] as [AppView, string][])
+    : customerLinks;
   return (
     <>
       <a className="skip-link" href="#main-content">

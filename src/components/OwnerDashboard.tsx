@@ -1,3 +1,4 @@
+import { CashClosing } from './CashClosing';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { businessDate } from '../utils/sales';
@@ -7,6 +8,7 @@ import { Share2, ArrowRight, ClipboardCopy } from 'lucide-react';
 export const OwnerDashboard: React.FC = () => {
   const {
     orders,
+    isSupervisor,
     inventory,
     inventoryReady,
     isFirebaseConnected,
@@ -55,7 +57,7 @@ export const OwnerDashboard: React.FC = () => {
         <div>
           <span className="qp-eyebrow">Supervisi jarak jauh</span>
           <h1 className="text-3xl !font-sans font-semibold mt-2">
-            Ringkasan toko
+            {isSupervisor ? 'Ringkasan toko' : 'Penjualan hari ini'}
           </h1>
           <p className="text-sm text-stone-500 mt-3">
             Periksa penjualan dan pengecualian tanpa membaca satu per satu pesan
@@ -81,6 +83,11 @@ export const OwnerDashboard: React.FC = () => {
           terakhir saat koneksi terputus.
         </p>
       )}
+      <CashClosing
+        day={day}
+        payments={report.payments}
+        connected={isFirebaseConnected}
+      />
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {[
           [
@@ -166,12 +173,14 @@ export const OwnerDashboard: React.FC = () => {
             >
               Tindak lanjut pesanan <ArrowRight size={16} />
             </button>
-            <button
-              className="qp-button qp-button-secondary"
-              onClick={() => setCurrentView('inventory')}
-            >
-              Periksa inventaris
-            </button>
+            {isSupervisor && (
+              <button
+                className="qp-button qp-button-secondary"
+                onClick={() => setCurrentView('inventory')}
+              >
+                Periksa inventaris
+              </button>
+            )}
           </div>
         </section>
       </div>

@@ -27,6 +27,7 @@ import { ShoppingBag } from 'lucide-react';
 const MainAppContent: React.FC = () => {
   const {
     currentView,
+    isSupervisor,
     setCurrentView,
     activeRole,
     setActiveRole,
@@ -35,6 +36,21 @@ const MainAppContent: React.FC = () => {
     setIsCartOpen,
   } = useStudio();
 
+  useEffect(() => {
+    if (
+      activeRole === 'ADMIN' &&
+      !isSupervisor &&
+      [
+        'menu',
+        'inventory',
+        'kalkulator',
+        'rekap',
+        'settings',
+        'strategi',
+      ].includes(currentView)
+    )
+      setCurrentView('pos');
+  }, [activeRole, isSupervisor, currentView, setCurrentView]);
   const previousView = useRef(currentView);
   useEffect(() => {
     const titles: Record<string, string> = {
@@ -124,17 +140,23 @@ const MainAppContent: React.FC = () => {
             )}
             {currentView === 'supervision' && <OwnerDashboard />}
 
-            {currentView === 'menu' && <AdminMenuView />}
+            {isSupervisor && currentView === 'menu' && <AdminMenuView />}
 
-            {currentView === 'inventory' && <InventoryView />}
+            {isSupervisor && currentView === 'inventory' && <InventoryView />}
 
-            {currentView === 'kalkulator' && <CostProfitCalculatorView />}
+            {isSupervisor && currentView === 'kalkulator' && (
+              <CostProfitCalculatorView />
+            )}
 
-            {currentView === 'rekap' && <SalesAnalyticsView />}
+            {isSupervisor && currentView === 'rekap' && <SalesAnalyticsView />}
 
-            {currentView === 'settings' && <AdminSettingsView />}
+            {isSupervisor && currentView === 'settings' && (
+              <AdminSettingsView />
+            )}
 
-            {currentView === 'strategi' && <MarketStrategyView />}
+            {isSupervisor && currentView === 'strategi' && (
+              <MarketStrategyView />
+            )}
 
             {/* Fallbacks if navigated from customer view */}
             {currentView === 'beranda' && (
