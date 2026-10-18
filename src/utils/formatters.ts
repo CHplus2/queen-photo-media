@@ -27,6 +27,7 @@ export function formatDateTime(isoString: string): string {
   try {
     const date = new Date(isoString);
     return new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Pontianak',
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -38,20 +39,26 @@ export function formatDateTime(isoString: string): string {
   }
 }
 
-export function generateWhatsAppRecapText(orders: Order[], targetMonthly = 30000000): string {
+export function generateWhatsAppRecapText(
+  orders: Order[],
+  targetMonthly = 30000000,
+): string {
   const todayStr = businessDate(new Date());
   const todayOrders = reportableOrders(orders, todayStr);
-  
+
   const totalOmset = salesSummary(todayOrders).revenue;
   const totalHPP = todayOrders.reduce((sum, o) => sum + o.totalCost, 0);
   const totalProfit = totalOmset - totalHPP;
-  const walkinCount = todayOrders.filter(o => o.channel === 'WALKIN').length;
-  const onlineCount = todayOrders.filter(o => o.channel === 'ONLINE').length;
+  const walkinCount = todayOrders.filter((o) => o.channel === 'WALKIN').length;
+  const onlineCount = todayOrders.filter((o) => o.channel === 'ONLINE').length;
 
   const monthOrders = reportableOrders(orders);
   const monthlyOmset = salesSummary(monthOrders).revenue;
   const monthlyProfit = salesSummary(monthOrders).profit;
-  const targetPct = Math.min(100, Math.round((monthlyOmset / targetMonthly) * 100));
+  const targetPct = Math.min(
+    100,
+    Math.round((monthlyOmset / targetMonthly) * 100),
+  );
 
   let text = `📸 *LAPORAN PENJUALAN QUEEN PHOTO PONTIANAK*\n`;
   text += `📅 Tanggal: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}\n\n`;
@@ -67,7 +74,9 @@ export function generateWhatsAppRecapText(orders: Order[], targetMonthly = 30000
 
   text += `📝 *DETAIL TRANSAKSI TERAKHIR:*\n`;
   todayOrders.slice(0, 5).forEach((order, index) => {
-    const itemNames = order.items.map(i => `${i.quantity}x ${i.serviceName}`).join(', ');
+    const itemNames = order.items
+      .map((i) => `${i.quantity}x ${i.serviceName}`)
+      .join(', ');
     text += `${index + 1}. [${order.channel}] ${order.customerName} - ${itemNames} = ${formatRupiah(order.totalAmount)} (${order.paymentMethod})\n`;
   });
 
@@ -78,14 +87,14 @@ export function generateWhatsAppRecapText(orders: Order[], targetMonthly = 30000
 export function createWhatsAppOrderLink(order: Order): string {
   const phone = order.customerPhone.replace(/[^0-9]/g, '');
   const cleanPhone = phone.startsWith('0') ? `62${phone.slice(1)}` : phone;
-  
+
   let msg = `Halo ${order.customerName}, terima kasih telah memesan di *Queen Photo Pontianak*! 📸\n\n`;
   msg += `Nomor Pesanan: *#${order.id}*\n`;
   msg += `Status: *${order.orderStatus.replace(/_/g, ' ')}*\n`;
   msg += `Metode Pembayaran: *${order.paymentMethod.replace(/_/g, ' ')}* (${order.paymentStatus})\n`;
   msg += `Metode Pengiriman: *${order.deliveryMethod === 'GRAB_EXPRESS_PONTIANAK' ? 'GrabExpress Pontianak' : order.deliveryMethod === 'AMBIL_STUDIO' ? 'Ambil di Studio (Gajah Mada)' : 'Ekspedisi Kalbar'}*\n\n`;
   msg += `*Rincian Pesanan:*\n`;
-  order.items.forEach(item => {
+  order.items.forEach((item) => {
     msg += `• ${item.quantity}x ${item.serviceName} (${item.size}${item.finish ? `, ${item.finish}` : ''}) = ${formatRupiah(item.unitPrice * item.quantity)}\n`;
   });
   if (order.deliveryFee > 0) {
@@ -99,7 +108,18 @@ export function createWhatsAppOrderLink(order: Order): string {
 }
 
 export function createStudioOrderLink(order: Order): string {
-  const phone = (import.meta.env.VITE_STUDIO_WHATSAPP || '').replace(/[^0-9]/g, '');
-  const text = `Halo Queen Photo, saya ${order.customerName}. Mohon konfirmasi pesanan #${order.id}.\n` + order.items.map(item => `${item.quantity}x ${item.serviceName} (${item.size})${item.photoFileName ? ` — file: ${item.photoFileName}` : ''}`).join('\n') + `\nTotal: ${formatRupiah(order.totalAmount)}. Status pembayaran: ${order.paymentStatus}. Saya akan mengirim foto asli di chat ini.`;
+  const phone = (import.meta.env.VITE_STUDIO_WHATSAPP || '').replace(
+    /[^0-9]/g,
+    '',
+  );
+  const text =
+    `Halo Queen Photo, saya ${order.customerName}. Mohon konfirmasi pesanan #${order.id}.\n` +
+    order.items
+      .map(
+        (item) =>
+          `${item.quantity}x ${item.serviceName} (${item.size})${item.photoFileName ? ` — file: ${item.photoFileName}` : ''}`,
+      )
+      .join('\n') +
+    `\nTotal: ${formatRupiah(order.totalAmount)}. Status pembayaran: ${order.paymentStatus}. Saya akan mengirim foto asli di chat ini.`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }

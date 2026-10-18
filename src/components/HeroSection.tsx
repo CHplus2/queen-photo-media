@@ -1,123 +1,146 @@
-import bundledPhoto0 from '../assets/images/queen_photo_modern_studio_1791787204044.jpg';
 import React from 'react';
+import studioPhoto from '../assets/images/queen_photo_modern_studio_1791787204044.jpg';
+import stripPhoto from '../assets/images/queen_photo_genz_photostrips_1791787249531.jpg';
 import { useStudio } from '../context/StudioContext';
-import { Camera, Sparkles, Truck, Check, ArrowRight, ShieldCheck, Heart } from 'lucide-react';
+import { ArrowRight, MapPin, Sparkles } from 'lucide-react';
+import { formatRupiah } from '../utils/formatters';
 
 export const HeroSection: React.FC = () => {
-  const { setIsOrderModalOpen, setCurrentView, openOrderWithService, services } = useStudio();
-
-  const photostripService = services.find(s => s.id === 'photostrip-korean-2x6') || services[0];
-
+  const { setCurrentView, openOrderWithService, services } = useStudio();
+  const strip = services.find(
+    (s) => s.id === 'photostrip-korean-2x6' && s.isActive !== false,
+  );
   return (
-    <section className="relative bg-white text-stone-900 overflow-hidden border-b border-stone-200">
-      {/* Subtle modern background gradient highlight */}
-      <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-stone-100/80 to-transparent pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto px-6 py-12 lg:py-16 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-          
-          {/* Left Column: Modern Hero Narrative */}
-          <div className="lg:col-span-6 space-y-6">
-            
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-stone-600 tracking-wide uppercase">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                <span>Studio Foto & Cetak Digital Terpercaya · Pontianak</span>
-              </div>
-
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-stone-900 leading-[1.18] text-balance">
-                Cetak Foto HP, Photostrip Aesthetic, & Potret Studio Tanpa Ribet Keluar Rumah.
-              </h1>
-            </div>
-
-            <p className="text-stone-600 text-sm sm:text-base leading-relaxed max-w-xl">
-              Tinggalkan cara lama yang repot. Pesan cetak foto favoritmu, photostrip 4-cut viral, atau pas foto aesthetic langsung dari handphone. 
-              Hasil cetak kimia Minilab asli yang tahan air dan awet puluhan tahun, diantar kurir GrabExpress se-Pontianak & Kubu Raya.
+    <>
+      <section className="bg-[#f3f1e9] border-b border-stone-200">
+        <div className="qp-container grid lg:grid-cols-2 gap-10 lg:gap-16 items-center py-12 sm:py-16 lg:py-20">
+          <div>
+            <span className="qp-eyebrow flex gap-2 items-center">
+              <span className="w-6 h-px bg-stone-500" />
+              Studio foto untuk setiap generasi
+            </span>
+            <h1 className="text-[clamp(2.75rem,5.2vw,4.7rem)] leading-[1.08] font-medium mt-6 max-w-xl">
+              Momen sederhana.
+              <br />
+              <span className="italic text-[#8a6547]">Kenangan selamanya.</span>
+            </h1>
+            <p className="text-stone-600 mt-6 text-base sm:text-lg max-w-md leading-relaxed">
+              Dari foto di ponsel hingga potret keluarga. Cetak, bingkai, dan
+              simpan cerita favoritmu bersama Queen Photo.
             </p>
-
-            {/* Action buttons */}
-            <div className="flex flex-wrap items-center gap-3 pt-1">
+            <div className="flex flex-wrap gap-3 mt-8">
               <button
-                onClick={() => setIsOrderModalOpen(true)}
-                className="flex items-center gap-2 px-6 py-3.5 bg-stone-900 hover:bg-stone-800 text-white font-semibold rounded-xl text-xs sm:text-sm transition-all shadow-sm active:scale-[0.98] whitespace-nowrap"
+                className="qp-button"
+                onClick={() => setCurrentView('layanan')}
               >
-                <Camera className="w-4 h-4 text-amber-300" />
-                <span>Pesan Cetak Foto Sekarang</span>
+                Lihat layanan & harga <ArrowRight size={17} />
               </button>
-              
               <button
-                onClick={() => openOrderWithService(photostripService)}
-                className="flex items-center gap-2 px-5 py-3.5 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 text-amber-950 text-xs sm:text-sm font-semibold rounded-xl transition-colors whitespace-nowrap"
+                className="qp-button qp-button-secondary"
+                onClick={() => setCurrentView('lacak')}
               >
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>Order Korean Photostrip (Rp 18rb)</span>
+                Lacak pesanan
               </button>
             </div>
-
-            {/* Modern Trust Points */}
-            <div className="pt-6 border-t border-stone-100 grid grid-cols-3 gap-4 text-xs text-stone-600">
-              <div>
-                <p className="font-bold text-stone-900 text-sm">Minilab Asli</p>
-                <p className="mt-0.5 text-stone-500">Bukan printer kertas biasa, anti pudar puluhan tahun</p>
-              </div>
-              <div>
-                <p className="font-bold text-stone-900 text-sm">GrabExpress Kilat</p>
-                <p className="mt-0.5 text-stone-500">Siap antar ke rumah se-Pontianak & Serdam</p>
-              </div>
-              <div>
-                <p className="font-bold text-stone-900 text-sm">Sejak 1980</p>
-                <p className="mt-0.5 text-stone-500">Berpengalaman 40+ tahun di Jl. Gajah Mada</p>
-              </div>
+            <div className="flex items-center gap-2 mt-8 text-xs sm:text-sm text-stone-500">
+              <MapPin size={16} />
+              Pontianak, Kalimantan Barat <span className="mx-1">·</span> Sejak
+              1980
             </div>
-
           </div>
-
-          {/* Right Column: Fresh Modern Studio Visual */}
-          <div className="lg:col-span-6 relative">
-            <div className="relative rounded-2xl overflow-hidden border border-stone-200 shadow-xl aspect-[16/10] bg-stone-100 group">
+          <div className="relative pb-6 sm:pl-5">
+            <div className="rounded-t-[100px] sm:rounded-t-[150px] rounded-b-xl overflow-hidden aspect-[5/4] sm:aspect-[6/5] bg-stone-200">
               <img
-                src={bundledPhoto0}
-                alt="Studio foto modern minimalis Queen Photo Pontianak"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                referrerPolicy="no-referrer"
+                src={studioPhoto}
+                width="1200"
+                height="1000"
+                fetchPriority="high"
+                alt="Potret pasangan dengan pencahayaan studio yang natural"
+                className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-stone-950/20 to-transparent pointer-events-none" />
-              
-              {/* Overlay description */}
-              <div className="absolute bottom-4 left-5 right-5 text-stone-100 flex items-end justify-between pointer-events-none">
-                <div>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
-                    Modern Studio Session
-                  </span>
-                  <p className="font-serif font-bold text-white text-base">
-                    Pencahayaan Studio Bersih & Alami
-                  </p>
-                  <p className="text-xs text-stone-300">
-                    Sesi Pasangan, Sahabat & Keluarga Muda · Jl. Gajah Mada Pontianak
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-mono font-bold bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-md text-white">
-                    Mulai Rp 85.000
-                  </span>
-                </div>
-              </div>
             </div>
-
-            {/* Quick floating feature badge */}
-            <div className="hidden sm:flex items-center gap-3 absolute -bottom-5 -left-4 bg-white p-3 rounded-xl border border-stone-200 shadow-lg text-xs">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                ✓
-              </div>
+            <div className="absolute bottom-0 left-0 right-5 sm:right-10 flex items-center gap-4 bg-white border border-stone-200 rounded-xl p-4 sm:p-5 shadow-sm">
+              <span className="w-11 h-11 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
+                <Sparkles size={20} strokeWidth={1.5} />
+              </span>
               <div>
-                <p className="font-bold text-stone-900">100% Garansi Warna Tajam</p>
-                <p className="text-stone-500 text-[11px]">Bebas noda sidik jari & tahan air</p>
+                <p className="font-semibold text-sm">
+                  Untuk momen besar. Juga yang kecil.
+                </p>
+                <p className="text-stone-500 text-xs sm:text-sm mt-1">
+                  Sendiri, bersama sahabat, atau sekeluarga.
+                </p>
               </div>
             </div>
           </div>
-
         </div>
-      </div>
-    </section>
+      </section>
+      <section
+        aria-label="Cara memesan"
+        className="bg-white border-b border-stone-200"
+      >
+        <div className="qp-container grid sm:grid-cols-3 gap-5 py-7">
+          {[
+            ['01', 'Pilih layanan', 'Gunakan pilihan standar atau sesuaikan.'],
+            [
+              '02',
+              'Gabungkan di keranjang',
+              'Satu pesanan untuk beberapa layanan.',
+            ],
+            [
+              '03',
+              'Konfirmasi dengan studio',
+              'Kirim foto asli dan cek rincian via WhatsApp.',
+            ],
+          ].map(([n, title, text]) => (
+            <div key={n} className="qp-step">
+              <span className="qp-step-number">{n}</span>
+              <div>
+                <p className="font-semibold text-stone-900">{title}</p>
+                <p className="text-xs mt-1">{text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+      {strip && (
+        <section className="qp-container py-12 sm:py-16">
+          <div className="qp-panel overflow-hidden grid md:grid-cols-[.85fr_1.15fr] items-center">
+            <img
+              src={stripPhoto}
+              alt="Contoh photostrip dan cetakan mini untuk koleksi momen bersama"
+              width="800"
+              height="600"
+              loading="lazy"
+              className="w-full h-full max-h-[320px] object-cover"
+            />
+            <div className="p-6 sm:p-10">
+              <span className="qp-eyebrow">Cetakan kecil, cerita besar</span>
+              <h2 className="text-3xl sm:text-4xl mt-3 leading-tight">
+                Momen favorit, jadi photostrip.
+              </h2>
+              <p className="text-stone-600 text-sm sm:text-base mt-4 max-w-lg">
+                Untuk sahabat, pasangan, atau koleksi sendiri. Pilih paketnya,
+                lalu kirim foto favoritmu.
+              </p>
+              <div className="flex flex-wrap items-center gap-5 mt-6">
+                <button
+                  onClick={() => openOrderWithService(strip)}
+                  className="qp-button"
+                >
+                  Buat photostrip <ArrowRight size={16} />
+                </button>
+                <span className="text-sm text-stone-500">
+                  Mulai{' '}
+                  <strong className="text-stone-900">
+                    {formatRupiah(strip.basePrice)}
+                  </strong>
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+    </>
   );
 };

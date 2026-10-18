@@ -1,27 +1,41 @@
+import { useDialog } from '../hooks/useDialog';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { ServiceItem, ServiceCategory } from '../types';
 import { formatRupiah } from '../utils/formatters';
-import { 
-  Plus, Edit3, Trash2, Check, X, Search, Sparkles, 
-  Layers, Package, AlertCircle, RefreshCw, Eye, ArrowUpDown, 
-  HelpCircle, CheckCircle2, ChevronRight 
+import {
+  Plus,
+  Edit3,
+  Trash2,
+  Check,
+  X,
+  Search,
+  Sparkles,
+  Layers,
+  Package,
+  AlertCircle,
+  RefreshCw,
+  Eye,
+  ArrowUpDown,
+  HelpCircle,
+  CheckCircle2,
+  ChevronRight,
 } from 'lucide-react';
 
 export const AdminMenuView: React.FC = () => {
-  const { 
-    services, 
-    addService, 
-    updateService, 
-    deleteService, 
+  const {
+    services,
+    addService,
+    updateService,
+    deleteService,
     resetServicesToDefault,
-    openOrderWithService 
+    openOrderWithService,
   } = useStudio();
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ServiceItem | null>(null);
@@ -29,17 +43,27 @@ export const AdminMenuView: React.FC = () => {
   const [notificationMsg, setNotificationMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const modalRef = useDialog<HTMLDivElement>(isModalOpen, () => {
+    if (!isSaving) setIsModalOpen(false);
+  });
+
   // Form Fields
   const [formName, setFormName] = useState('');
-  const [formCategory, setFormCategory] = useState<ServiceCategory>('photostrip_polaroid');
+  const [formCategory, setFormCategory] = useState<ServiceCategory>(
+    'photostrip_polaroid',
+  );
   const [formDescription, setFormDescription] = useState('');
   const [formBasePrice, setFormBasePrice] = useState<number>(20000);
   const [formEstimatedCost, setFormEstimatedCost] = useState<number>(6000);
   const [formUnit, setFormUnit] = useState('2 strip');
-  const [formPaperType, setFormPaperType] = useState<'sheet' | 'roll' | 'merchandise' | 'service'>('roll');
+  const [formPaperType, setFormPaperType] = useState<
+    'sheet' | 'roll' | 'merchandise' | 'service'
+  >('roll');
   const [formPopular, setFormPopular] = useState(false);
   const [formSizes, setFormSizes] = useState<string>('2x6 inch (5x15cm)');
-  const [formFinishes, setFormFinishes] = useState<string>('Glossy Anti-Luntur, Doff Matte');
+  const [formFinishes, setFormFinishes] = useState<string>(
+    'Glossy Anti-Luntur, Doff Matte',
+  );
   const [formFrames, setFormFrames] = useState<string>('Tanpa Bingkai');
   const [formBgColors, setFormBgColors] = useState<string>('');
 
@@ -55,8 +79,9 @@ export const AdminMenuView: React.FC = () => {
   ];
 
   // Filtered Services
-  const filteredServices = services.filter(item => {
-    if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
+  const filteredServices = services.filter((item) => {
+    if (selectedCategory !== 'all' && item.category !== selectedCategory)
+      return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = item.name.toLowerCase().includes(q);
@@ -69,13 +94,19 @@ export const AdminMenuView: React.FC = () => {
 
   // Calculate Metrics
   const totalItems = services.length;
-  const popularCount = services.filter(s => s.popular).length;
-  const avgMargin = services.length > 0 
-    ? Math.round(services.reduce((acc, s) => {
-        const margin = s.basePrice > 0 ? ((s.basePrice - s.estimatedCost) / s.basePrice) * 100 : 0;
-        return acc + margin;
-      }, 0) / services.length)
-    : 0;
+  const popularCount = services.filter((s) => s.popular).length;
+  const avgMargin =
+    services.length > 0
+      ? Math.round(
+          services.reduce((acc, s) => {
+            const margin =
+              s.basePrice > 0
+                ? ((s.basePrice - s.estimatedCost) / s.basePrice) * 100
+                : 0;
+            return acc + margin;
+          }, 0) / services.length,
+        )
+      : 0;
 
   // Open Modal for Create
   const handleOpenCreateModal = () => {
@@ -121,10 +152,22 @@ export const AdminMenuView: React.FC = () => {
       return;
     }
 
-    const sizesArr = formSizes.split(',').map(s => s.trim()).filter(Boolean);
-    const finishesArr = formFinishes.split(',').map(s => s.trim()).filter(Boolean);
-    const framesArr = formFrames.split(',').map(s => s.trim()).filter(Boolean);
-    const bgColorsArr = formBgColors.split(',').map(s => s.trim()).filter(Boolean);
+    const sizesArr = formSizes
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const finishesArr = formFinishes
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const framesArr = formFrames
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const bgColorsArr = formBgColors
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     const optionsObj: Record<string, string[]> = {};
     if (sizesArr.length > 0) optionsObj.sizes = sizesArr;
@@ -149,15 +192,21 @@ export const AdminMenuView: React.FC = () => {
     try {
       if (editingItem) {
         await updateService(editingItem.id, servicePayload);
-        setNotificationMsg(`✅ Layanan "${formName}" berhasil diperbarui! Harga & data telah tersimpan permanen di Cloud Firestore.`);
+        setNotificationMsg(
+          `Layanan "${formName}" berhasil diperbarui! Harga & data telah tersimpan permanen di Cloud Firestore.`,
+        );
       } else {
         const created = await addService(servicePayload);
-        setNotificationMsg(`✅ Menu baru "${created.name}" berhasil ditambahkan dan aktif di kasir & website!`);
+        setNotificationMsg(
+          `Menu baru "${created.name}" berhasil ditambahkan dan aktif di kasir & website!`,
+        );
       }
       setIsModalOpen(false);
       setTimeout(() => setNotificationMsg(''), 5000);
     } catch (err: any) {
-      alert(`Gagal menyimpan perubahan: ${err?.message || 'Terjadi kesalahan'}`);
+      alert(
+        `Gagal menyimpan perubahan: ${err?.message || 'Terjadi kesalahan'}`,
+      );
     } finally {
       setIsSaving(false);
     }
@@ -173,7 +222,6 @@ export const AdminMenuView: React.FC = () => {
 
   return (
     <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 space-y-8">
-      
       {/* Header & Quick Action */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
@@ -185,7 +233,8 @@ export const AdminMenuView: React.FC = () => {
             Kelola Menu Layanan & Produk Studio
           </h2>
           <p className="text-stone-600 text-xs sm:text-sm mt-0.5">
-            Tambah, perbarui harga jual & biaya HPP, sesuaikan paket foto Gen Z, dan kontrol menu yang tampil di kasir toko & website.
+            Tambah, perbarui harga jual & biaya HPP, sesuaikan paket foto Gen Z,
+            dan kontrol menu yang tampil di kasir toko & website.
           </p>
         </div>
 
@@ -200,7 +249,11 @@ export const AdminMenuView: React.FC = () => {
 
           <button
             onClick={() => {
-              if (window.confirm('Reset semua menu ke daftar awal Queen Photo Pontianak?')) {
+              if (
+                window.confirm(
+                  'Reset semua menu ke daftar awal Queen Photo Pontianak?',
+                )
+              ) {
                 resetServicesToDefault();
                 setNotificationMsg('Menu telah direset ke default awal.');
                 setTimeout(() => setNotificationMsg(''), 4000);
@@ -226,30 +279,52 @@ export const AdminMenuView: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-xs">
-          <span className="text-[11px] font-semibold text-stone-500 block uppercase">Total Menu Aktif</span>
-          <p className="text-2xl font-bold font-serif text-stone-900 mt-1">{totalItems}</p>
-          <span className="text-[10px] text-stone-500">Tersedia untuk pelanggan</span>
+          <span className="text-[11px] font-semibold text-stone-500 block uppercase">
+            Total Menu Aktif
+          </span>
+          <p className="text-2xl font-bold font-serif text-stone-900 mt-1">
+            {totalItems}
+          </p>
+          <span className="text-[10px] text-stone-500">
+            Tersedia untuk pelanggan
+          </span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-xs">
-          <span className="text-[11px] font-semibold text-stone-500 block uppercase">Menu Populer / Viral</span>
-          <p className="text-2xl font-bold font-serif text-amber-800 mt-1">{popularCount}</p>
-          <span className="text-[10px] text-amber-700">Photostrip & Polaroid Gen Z</span>
+          <span className="text-[11px] font-semibold text-stone-500 block uppercase">
+            Menu Populer / Viral
+          </span>
+          <p className="text-2xl font-bold font-serif text-amber-800 mt-1">
+            {popularCount}
+          </p>
+          <span className="text-[10px] text-amber-700">
+            Photostrip & Polaroid Gen Z
+          </span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-xs">
-          <span className="text-[11px] font-semibold text-stone-500 block uppercase">Rata-rata Margin Laba</span>
-          <p className="text-2xl font-bold font-serif text-emerald-800 mt-1">{avgMargin}%</p>
-          <span className="text-[10px] text-emerald-700">Persentase keuntungan rata-rata</span>
+          <span className="text-[11px] font-semibold text-stone-500 block uppercase">
+            Rata-rata Margin Laba
+          </span>
+          <p className="text-2xl font-bold font-serif text-emerald-800 mt-1">
+            {avgMargin}%
+          </p>
+          <span className="text-[10px] text-emerald-700">
+            Persentase keuntungan rata-rata
+          </span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-xs">
-          <span className="text-[11px] font-semibold text-stone-500 block uppercase">Sinkronisasi Cloud</span>
-          <p className="text-sm font-bold font-mono text-stone-800 mt-2 flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-stone-500 block uppercase">
+            Sinkronisasi Cloud
+          </span>
+          <p className="text-sm font-bold tabular-nums text-stone-800 mt-2 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
             Firestore Real-Time
           </p>
-          <span className="text-[10px] text-stone-500">Otomatis update di Kasir POS</span>
+          <span className="text-[10px] text-stone-500">
+            Otomatis update di Kasir POS
+          </span>
         </div>
       </div>
 
@@ -268,14 +343,19 @@ export const AdminMenuView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-stone-500 whitespace-nowrap">Kategori:</span>
+            <span className="text-xs font-semibold text-stone-500 whitespace-nowrap">
+              Kategori:
+            </span>
             <select
+              aria-label="Filter kategori layanan"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="text-xs border border-stone-300 rounded-xl px-3 py-2 bg-white text-stone-800 font-medium focus:outline-none focus:border-amber-600"
             >
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.label}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
               ))}
             </select>
           </div>
@@ -283,7 +363,7 @@ export const AdminMenuView: React.FC = () => {
 
         {/* Quick Category Badges */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-          {categories.map(c => (
+          {categories.map((c) => (
             <button
               key={c.id}
               onClick={() => setSelectedCategory(c.id)}
@@ -301,12 +381,15 @@ export const AdminMenuView: React.FC = () => {
 
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredServices.map(item => {
+        {filteredServices.map((item) => {
           const profit = item.basePrice - item.estimatedCost;
-          const marginPct = item.basePrice > 0 ? Math.round((profit / item.basePrice) * 100) : 0;
+          const marginPct =
+            item.basePrice > 0
+              ? Math.round((profit / item.basePrice) * 100)
+              : 0;
 
           return (
-            <div 
+            <div
               key={item.id}
               className="bg-white rounded-2xl border border-stone-200 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden"
             >
@@ -340,18 +423,22 @@ export const AdminMenuView: React.FC = () => {
                     <span className="text-stone-500">Harga Jual:</span>
                     <span className="font-bold text-stone-900 font-serif text-sm">
                       {formatRupiah(item.basePrice)}
-                      <span className="text-[10px] text-stone-500 font-sans font-normal ml-1">/ {item.unit}</span>
+                      <span className="text-[10px] text-stone-500 font-sans font-normal ml-1">
+                        / {item.unit}
+                      </span>
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-stone-500">Biaya HPP:</span>
-                    <span className="text-stone-700 font-mono">{formatRupiah(item.estimatedCost)}</span>
+                    <span className="text-stone-700 tabular-nums">
+                      {formatRupiah(item.estimatedCost)}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] pt-1 border-t border-stone-200/70 font-semibold">
                     <span className="text-emerald-700">Untung Bersih:</span>
-                    <span className="text-emerald-700 font-mono">
+                    <span className="text-emerald-700 tabular-nums">
                       +{formatRupiah(profit)} ({marginPct}%)
                     </span>
                   </div>
@@ -361,12 +448,14 @@ export const AdminMenuView: React.FC = () => {
                 <div className="space-y-1 text-[11px] text-stone-500">
                   {item.options?.sizes && (
                     <div className="truncate">
-                      <strong className="text-stone-700">Ukuran:</strong> {item.options.sizes.join(', ')}
+                      <strong className="text-stone-700">Ukuran:</strong>{' '}
+                      {item.options.sizes.join(', ')}
                     </div>
                   )}
                   {item.options?.finishes && (
                     <div className="truncate">
-                      <strong className="text-stone-700">Finishing:</strong> {item.options.finishes.join(', ')}
+                      <strong className="text-stone-700">Finishing:</strong>{' '}
+                      {item.options.finishes.join(', ')}
                     </div>
                   )}
                 </div>
@@ -429,9 +518,14 @@ export const AdminMenuView: React.FC = () => {
 
       {filteredServices.length === 0 && (
         <div className="p-12 text-center bg-white rounded-2xl border border-stone-200 text-stone-500 space-y-3">
-          <p className="text-sm font-semibold">Tidak ada layanan yang sesuai dengan pencarian atau kategori.</p>
+          <p className="text-sm font-semibold">
+            Tidak ada layanan yang sesuai dengan pencarian atau kategori.
+          </p>
           <button
-            onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }}
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedCategory('all');
+            }}
             className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold rounded-xl"
           >
             Reset Filter
@@ -442,32 +536,47 @@ export const AdminMenuView: React.FC = () => {
       {/* CREATE / EDIT MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden my-8 animate-in fade-in zoom-in-95">
-            
+          <div
+            ref={modalRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Rincian layanan"
+            className="qp-dialog !max-w-xl"
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 bg-stone-900 text-stone-100 border-b border-stone-800">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-amber-400" />
                 <h3 className="text-sm font-bold">
-                  {editingItem ? 'Edit Menu Layanan & Harga' : 'Tambah Menu Layanan Baru'}
+                  {editingItem
+                    ? 'Edit Menu Layanan & Harga'
+                    : 'Tambah Menu Layanan Baru'}
                 </h3>
               </div>
               <button
+                aria-label="Tutup rincian layanan"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-100"
+                className="qp-icon-button text-stone-300 hover:text-stone-100"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSaveService} className="p-6 space-y-4 text-xs max-h-[80vh] overflow-y-auto">
-              
+            <form
+              onSubmit={handleSaveService}
+              className="qp-dialog-content space-y-4 text-sm"
+            >
               <div>
-                <label className="block text-stone-800 font-semibold mb-1">
+                <label
+                  className="block text-stone-800 font-semibold mb-1"
+                  htmlFor="adminmenuview-field-1"
+                >
                   Nama Menu / Layanan <span className="text-rose-500">*</span>:
                 </label>
                 <input
+                  id="adminmenuview-field-1"
                   type="text"
                   required
                   value={formName}
@@ -479,15 +588,23 @@ export const AdminMenuView: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-stone-800 font-semibold mb-1">
+                  <label
+                    className="block text-stone-800 font-semibold mb-1"
+                    htmlFor="adminmenuview-field-2"
+                  >
                     Kategori Layanan:
                   </label>
                   <select
+                    id="adminmenuview-field-2"
                     value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value as ServiceCategory)}
+                    onChange={(e) =>
+                      setFormCategory(e.target.value as ServiceCategory)
+                    }
                     className="w-full border border-stone-300 rounded-xl px-3 py-2 text-stone-900 bg-white font-medium focus:outline-none focus:border-amber-600"
                   >
-                    <option value="photostrip_polaroid">Photostrip & Polaroid (Gen Z)</option>
+                    <option value="photostrip_polaroid">
+                      Photostrip & Polaroid (Gen Z)
+                    </option>
                     <option value="pas_foto">Pas Foto & Aesthetic</option>
                     <option value="cetak_foto">Cetak Foto & Frame</option>
                     <option value="foto_studio">Foto Studio Pontianak</option>
@@ -498,10 +615,14 @@ export const AdminMenuView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-stone-800 font-semibold mb-1">
+                  <label
+                    className="block text-stone-800 font-semibold mb-1"
+                    htmlFor="adminmenuview-field-3"
+                  >
                     Satuan Penjualan:
                   </label>
                   <input
+                    id="adminmenuview-field-3"
                     type="text"
                     value={formUnit}
                     onChange={(e) => setFormUnit(e.target.value)}
@@ -512,10 +633,14 @@ export const AdminMenuView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-stone-800 font-semibold mb-1">
+                <label
+                  className="block text-stone-800 font-semibold mb-1"
+                  htmlFor="adminmenuview-field-4"
+                >
                   Deskripsi Lengkap (Keunggulan & Kualitas):
                 </label>
                 <textarea
+                  id="adminmenuview-field-4"
                   rows={2}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
@@ -526,45 +651,67 @@ export const AdminMenuView: React.FC = () => {
 
               {/* Price & Cost */}
               <div className="p-4 bg-stone-50 rounded-xl border border-stone-200/80 space-y-3">
-                <span className="font-bold text-stone-900 block text-xs">Penetapan Harga & Biaya Pokok (HPP)</span>
-                
+                <span className="font-bold text-stone-900 block text-xs">
+                  Penetapan Harga & Biaya Pokok (HPP)
+                </span>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-stone-700 font-semibold mb-1">
+                    <label
+                      className="block text-stone-700 font-semibold mb-1"
+                      htmlFor="adminmenuview-field-5"
+                    >
                       Harga Jual Konsumen (Rp):
                     </label>
                     <input
+                      id="adminmenuview-field-5"
                       type="number"
                       min={0}
                       step={500}
                       required
                       value={formBasePrice}
                       onChange={(e) => setFormBasePrice(Number(e.target.value))}
-                      className="w-full border border-stone-300 rounded-xl px-3 py-2 font-mono font-bold text-stone-900 focus:outline-none focus:border-amber-600"
+                      className="w-full border border-stone-300 rounded-xl px-3 py-2 tabular-nums font-bold text-stone-900 focus:outline-none focus:border-amber-600"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-stone-700 font-semibold mb-1">
+                    <label
+                      className="block text-stone-700 font-semibold mb-1"
+                      htmlFor="adminmenuview-field-6"
+                    >
                       Biaya Pokok Produksi / HPP (Rp):
                     </label>
                     <input
+                      id="adminmenuview-field-6"
                       type="number"
                       min={0}
                       step={100}
                       required
                       value={formEstimatedCost}
-                      onChange={(e) => setFormEstimatedCost(Number(e.target.value))}
-                      className="w-full border border-stone-300 rounded-xl px-3 py-2 font-mono font-bold text-stone-900 focus:outline-none focus:border-amber-600"
+                      onChange={(e) =>
+                        setFormEstimatedCost(Number(e.target.value))
+                      }
+                      className="w-full border border-stone-300 rounded-xl px-3 py-2 tabular-nums font-bold text-stone-900 focus:outline-none focus:border-amber-600"
                     />
                   </div>
                 </div>
 
                 {/* Live Margin Calculation */}
                 <div className="pt-2 border-t border-stone-200 flex items-center justify-between text-xs">
-                  <span className="text-stone-600">Proyeksi Laba Bersih per Unit:</span>
-                  <span className="font-bold text-emerald-700 font-mono">
-                    +{formatRupiah(formBasePrice - formEstimatedCost)} ({formBasePrice > 0 ? Math.round(((formBasePrice - formEstimatedCost) / formBasePrice) * 100) : 0}% Margin)
+                  <span className="text-stone-600">
+                    Proyeksi Laba Bersih per Unit:
+                  </span>
+                  <span className="font-bold text-emerald-700 tabular-nums">
+                    +{formatRupiah(formBasePrice - formEstimatedCost)} (
+                    {formBasePrice > 0
+                      ? Math.round(
+                          ((formBasePrice - formEstimatedCost) /
+                            formBasePrice) *
+                            100,
+                        )
+                      : 0}
+                    % Margin)
                   </span>
                 </div>
               </div>
@@ -572,18 +719,30 @@ export const AdminMenuView: React.FC = () => {
               {/* Material & Paper Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-stone-800 font-semibold mb-1">
+                  <label
+                    className="block text-stone-800 font-semibold mb-1"
+                    htmlFor="adminmenuview-field-7"
+                  >
                     Jenis Bahan / Mesin:
                   </label>
                   <select
+                    id="adminmenuview-field-7"
                     value={formPaperType}
                     onChange={(e) => setFormPaperType(e.target.value as any)}
                     className="w-full border border-stone-300 rounded-xl px-3 py-2 text-stone-900 bg-white font-medium"
                   >
-                    <option value="roll">Roll Mesin Minilab (Cepat, Presisi)</option>
-                    <option value="sheet">Lembaran Sheet / A4 (Pas Foto / Dokumen)</option>
-                    <option value="merchandise">Bahan Fisik / Merchandise (Mug, Frame)</option>
-                    <option value="service">Jasa / Layanan Studio & Restorasi</option>
+                    <option value="roll">
+                      Roll Mesin Minilab (Cepat, Presisi)
+                    </option>
+                    <option value="sheet">
+                      Lembaran Sheet / A4 (Pas Foto / Dokumen)
+                    </option>
+                    <option value="merchandise">
+                      Bahan Fisik / Merchandise (Mug, Frame)
+                    </option>
+                    <option value="service">
+                      Jasa / Layanan Studio & Restorasi
+                    </option>
                   </select>
                 </div>
 
@@ -604,13 +763,19 @@ export const AdminMenuView: React.FC = () => {
 
               {/* Options Configuration */}
               <div className="space-y-3 pt-2 border-t border-stone-200">
-                <span className="font-bold text-stone-800 block">Konfigurasi Opsi Tambahan (Pisahkan dengan koma):</span>
+                <span className="font-bold text-stone-800 block">
+                  Konfigurasi Opsi Tambahan (Pisahkan dengan koma):
+                </span>
 
                 <div>
-                  <label className="block text-stone-600 text-[11px] font-semibold mb-0.5">
+                  <label
+                    className="block text-stone-600 text-[11px] font-semibold mb-0.5"
+                    htmlFor="adminmenuview-field-8"
+                  >
                     Opsi Ukuran Foto:
                   </label>
                   <input
+                    id="adminmenuview-field-8"
                     type="text"
                     value={formSizes}
                     onChange={(e) => setFormSizes(e.target.value)}
@@ -620,10 +785,14 @@ export const AdminMenuView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-stone-600 text-[11px] font-semibold mb-0.5">
+                  <label
+                    className="block text-stone-600 text-[11px] font-semibold mb-0.5"
+                    htmlFor="adminmenuview-field-9"
+                  >
                     Opsi Finishing Kertas:
                   </label>
                   <input
+                    id="adminmenuview-field-9"
                     type="text"
                     value={formFinishes}
                     onChange={(e) => setFormFinishes(e.target.value)}
@@ -633,10 +802,14 @@ export const AdminMenuView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-stone-600 text-[11px] font-semibold mb-0.5">
+                  <label
+                    className="block text-stone-600 text-[11px] font-semibold mb-0.5"
+                    htmlFor="adminmenuview-field-10"
+                  >
                     Opsi Bingkai / Frame:
                   </label>
                   <input
+                    id="adminmenuview-field-10"
                     type="text"
                     value={formFrames}
                     onChange={(e) => setFormFrames(e.target.value)}
@@ -666,17 +839,16 @@ export const AdminMenuView: React.FC = () => {
                       <span>Menyimpan ke Cloud Firestore...</span>
                     </>
                   ) : (
-                    <span>{editingItem ? 'Simpan Perubahan' : 'Buat Layanan Baru'}</span>
+                    <span>
+                      {editingItem ? 'Simpan Perubahan' : 'Buat Layanan Baru'}
+                    </span>
                   )}
                 </button>
               </div>
-
             </form>
-
           </div>
         </div>
       )}
-
     </div>
   );
 };

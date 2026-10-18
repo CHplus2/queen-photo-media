@@ -830,10 +830,8 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       claimedDiscountCode: discountCode,
     };
 
+    await setDoc(doc(db, 'customer_surveys', newSurvey.id), cleanForFirestore(newSurvey));
     setSurveys(prev => [newSurvey, ...prev]);
-    try {
-      await setDoc(doc(db, 'customer_surveys', newSurvey.id), newSurvey);
-    } catch {}
 
     return discountCode;
   };

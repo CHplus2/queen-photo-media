@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StudioProvider, useStudio, AppView } from './context/StudioContext';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
@@ -24,26 +24,48 @@ import { formatRupiah } from './utils/formatters';
 import { ShoppingBag } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
-  const { 
-    currentView, 
-    setCurrentView, 
-    activeRole, 
-    setActiveRole, 
+  const {
+    currentView,
+    setCurrentView,
+    activeRole,
+    setActiveRole,
     cart,
     isCartOpen,
-    setIsCartOpen
+    setIsCartOpen,
   } = useStudio();
-  
-  const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<Order | null>(null);
+
+  const previousView = useRef(currentView);
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      beranda: 'Studio & cetak foto',
+      layanan: 'Layanan & harga',
+      trending: 'Photostrip',
+      lacak: 'Lacak pesanan',
+      cerita: 'Tentang kami',
+      pos: 'Kasir & pesanan',
+      rekap: 'Laporan penjualan',
+    };
+    document.title = `${titles[currentView] || 'Ruang kerja studio'} — Queen Photo`;
+    if (previousView.current !== currentView) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      document.getElementById('main-content')?.focus({ preventScroll: true });
+      previousView.current = currentView;
+    }
+  }, [currentView]);
+  const [selectedReceiptOrder, setSelectedReceiptOrder] =
+    useState<Order | null>(null);
 
   return (
     <div className="min-h-screen flex flex-col bg-stone-50 text-stone-900 font-sans selection:bg-amber-100 selection:text-amber-900">
-      
       {/* Single Unified Header for both Customer & Admin - No Duplicate Navbar! */}
       <Header />
 
       {/* Main View Router */}
-      <main className="flex-1">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={`flex-1 outline-none ${activeRole === 'ADMIN' ? 'admin-workspace' : ''}`}
+      >
         {/* CUSTOMER VIEWS */}
         {activeRole === 'CUSTOMER' && (
           <>
@@ -55,24 +77,22 @@ const MainAppContent: React.FC = () => {
               </>
             )}
 
-            {currentView === 'layanan' && (
-              <ServicesCatalog />
-            )}
+            {currentView === 'layanan' && <ServicesCatalog />}
 
-            {currentView === 'trending' && (
-              <CustomerTrendingView />
-            )}
+            {currentView === 'trending' && <CustomerTrendingView />}
 
-            {currentView === 'lacak' && (
-              <OrderTrackingView />
-            )}
+            {currentView === 'lacak' && <OrderTrackingView />}
 
-            {currentView === 'cerita' && (
-              <HeritageStoryView />
-            )}
+            {currentView === 'cerita' && <HeritageStoryView />}
 
             {/* Fallbacks if role switched */}
-            {(currentView === 'pos' || currentView === 'menu' || currentView === 'inventory' || currentView === 'kalkulator' || currentView === 'rekap' || currentView === 'settings' || currentView === 'strategi') && (
+            {(currentView === 'pos' ||
+              currentView === 'menu' ||
+              currentView === 'inventory' ||
+              currentView === 'kalkulator' ||
+              currentView === 'rekap' ||
+              currentView === 'settings' ||
+              currentView === 'strategi') && (
               <>
                 <HeroSection />
                 <ServicesCatalog />
@@ -86,75 +106,64 @@ const MainAppContent: React.FC = () => {
         {activeRole === 'ADMIN' && (
           <>
             {currentView === 'pos' && (
-              <AdminPosView onPrintReceipt={(order) => setSelectedReceiptOrder(order)} />
+              <AdminPosView
+                onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
+              />
             )}
 
-            {currentView === 'menu' && (
-              <AdminMenuView />
-            )}
+            {currentView === 'menu' && <AdminMenuView />}
 
-            {currentView === 'inventory' && (
-              <InventoryView />
-            )}
+            {currentView === 'inventory' && <InventoryView />}
 
-            {currentView === 'kalkulator' && (
-              <CostProfitCalculatorView />
-            )}
+            {currentView === 'kalkulator' && <CostProfitCalculatorView />}
 
-            {currentView === 'rekap' && (
-              <SalesAnalyticsView />
-            )}
+            {currentView === 'rekap' && <SalesAnalyticsView />}
 
-            {currentView === 'settings' && (
-              <AdminSettingsView />
-            )}
+            {currentView === 'settings' && <AdminSettingsView />}
 
-            {currentView === 'strategi' && (
-              <MarketStrategyView />
-            )}
+            {currentView === 'strategi' && <MarketStrategyView />}
 
             {/* Fallbacks if navigated from customer view */}
             {currentView === 'beranda' && (
-              <AdminPosView onPrintReceipt={(order) => setSelectedReceiptOrder(order)} />
+              <AdminPosView
+                onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
+              />
             )}
-            {currentView === 'layanan' && (
-              <ServicesCatalog />
-            )}
-            {currentView === 'trending' && (
-              <CustomerTrendingView />
-            )}
-            {currentView === 'lacak' && (
-              <OrderTrackingView />
-            )}
-            {currentView === 'cerita' && (
-              <HeritageStoryView />
-            )}
+            {currentView === 'layanan' && <ServicesCatalog />}
+            {currentView === 'trending' && <CustomerTrendingView />}
+            {currentView === 'lacak' && <OrderTrackingView />}
+            {currentView === 'cerita' && <HeritageStoryView />}
           </>
         )}
       </main>
 
       {/* Floating Cart Button for Customers when items exist */}
       {activeRole === 'CUSTOMER' && cart.length > 0 && !isCartOpen && (
-        <aside aria-label="Akses Keranjang Cepat" className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40">
+        <aside
+          aria-label="Akses keranjang cepat"
+          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 z-40"
+        >
           <button
             onClick={() => setIsCartOpen(true)}
-            className="bg-stone-900 hover:bg-stone-800 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-stone-700 animate-in slide-in-from-bottom-4 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-            title="Buka Keranjang Belanja & Checkout"
+            className="qp-button !rounded-xl !py-4 !px-5 w-full sm:w-auto shadow-lg border border-stone-700 flex gap-4"
           >
-            <div className="relative">
-              <ShoppingBag className="w-5 h-5 text-amber-400" />
-              <span className="absolute -top-2 -right-2 bg-amber-500 text-stone-950 text-[10px] font-bold px-1.5 py-0.2 rounded-full min-w-[18px] text-center">
-                {cart.length}
+            <ShoppingBag size={20} />
+            <span className="text-left flex-1">
+              <span className="block text-xs text-stone-200">
+                {cart.reduce((n, item) => n + item.quantity, 0)} item di
+                keranjang
               </span>
-            </div>
-            <div className="text-left text-xs">
-              <p className="font-bold text-amber-300">Keranjang ({cart.length} item)</p>
-              <p className="font-mono text-stone-300 text-[11px]">
-                {formatRupiah(cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0))}
-              </p>
-            </div>
-            <span className="px-2.5 py-1 rounded-lg bg-amber-400 text-stone-950 font-bold text-xs ml-1 flex items-center gap-1">
-              Checkout →
+              <strong className="text-sm">
+                {formatRupiah(
+                  cart.reduce(
+                    (sum, item) => sum + item.unitPrice * item.quantity,
+                    0,
+                  ),
+                )}
+              </strong>
+            </span>
+            <span className="text-sm pl-4 border-l border-stone-600">
+              Lihat keranjang →
             </span>
           </button>
         </aside>
@@ -162,14 +171,17 @@ const MainAppContent: React.FC = () => {
 
       {/* Footer */}
       <Footer />
+      {activeRole === 'CUSTOMER' && cart.length > 0 && (
+        <div aria-hidden="true" className="h-24 bg-stone-950" />
+      )}
 
       {/* Global Modals & Drawers */}
       <CartDrawer />
       <CustomerSurveyModal />
       <OrderConfiguratorModal />
-      <ReceiptModal 
-        order={selectedReceiptOrder} 
-        onClose={() => setSelectedReceiptOrder(null)} 
+      <ReceiptModal
+        order={selectedReceiptOrder}
+        onClose={() => setSelectedReceiptOrder(null)}
       />
     </div>
   );

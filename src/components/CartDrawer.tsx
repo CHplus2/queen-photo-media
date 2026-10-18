@@ -1,11 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { DeliveryMethod, PaymentMethod, Order } from '../types';
 import { PONTIANAK_DISTRICTS } from '../data/initialData';
 import { formatRupiah, createStudioOrderLink } from '../utils/formatters';
+import { useDialog } from '../hooks/useDialog';
 import {
-  X, ShoppingBag, Trash2, Plus, Minus, ArrowRight,
-  Truck, MapPin, CreditCard, QrCode, Tag, Check, AlertCircle, Sparkles
+  X,
+  ShoppingBag,
+  Trash2,
+  Plus,
+  Minus,
+  ArrowRight,
+  ArrowLeft,
+  MapPin,
+  Truck,
+  Check,
+  MessageCircle,
+  ShieldCheck,
+  LoaderCircle,
 } from 'lucide-react';
 
 export const CartDrawer: React.FC = () => {
@@ -19,612 +31,658 @@ export const CartDrawer: React.FC = () => {
     addOrder,
     setActiveTrackingId,
     setCurrentView,
-    setIsSurveyModalOpen
   } = useStudio();
-
-  // Delivery & Customer state
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('GRAB_EXPRESS_PONTIANAK');
-  const [selectedDistrict, setSelectedDistrict] = useState(PONTIANAK_DISTRICTS[0]);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-
-  // Payment state
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('QRIS');
-  const [copiedAccount, setCopiedAccount] = useState(false);
-
-  // Voucher / Promo code
-  const [voucherInput, setVoucherInput] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
-  const [voucherMessage, setVoucherMessage] = useState<string>('');
-
-  // Order submission
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
-  const [completedOrderId, setCompletedOrderId] = useState<string | null>(null);
-
+  const [step, setStep] = useState<'cart' | 'details'>('cart');
+  const [delivery, setDelivery] = useState<DeliveryMethod>('AMBIL_STUDIO');
+  const [district, setDistrict] = useState(PONTIANAK_DISTRICTS[0]);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [payment, setPayment] = useState<PaymentMethod>('QRIS');
+  const [voucher, setVoucher] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [voucherMessage, setVoucherMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [completed, setCompleted] = useState<Order | null>(null);
+  const [copied, setCopied] = useState(false);
+  const content = useRef<HTMLDivElement>(null);
+  const close = () => {
+    if (submitting) return;
+    setIsCartOpen(false);
+    setCompleted(null);
+    setStep('cart');
+    setError('');
+  };
+  const ref = useDialog<HTMLElement>(isCartOpen, close);
+  useEffect(() => {
+    content.current?.scrollTo({ top: 0 });
+  }, [step]);
+  useEffect(() => {
+    if (error)
+      content.current
+        ?.querySelector('[role="alert"]')
+        ?.scrollIntoView({ block: 'nearest' });
+  }, [error]);
   if (!isCartOpen) return null;
-
-  // Pricing calculations
-  const subtotal = cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-  const totalCost = cart.reduce((sum, item) => sum + (item.unitCost * item.quantity), 0);
-  const deliveryFee = deliveryMethod === 'AMBIL_STUDIO' ? 0 : selectedDistrict.fee;
-  const discountAmount = Math.round(subtotal * appliedDiscount);
-  const totalAmount = Math.max(0, subtotal - discountAmount + deliveryFee);
-  const totalProfit = totalAmount - totalCost - deliveryFee;
-
-  const handleApplyVoucher = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanCode = voucherInput.trim().toUpperCase();
-    if (cleanCode === 'QUEEN10HEMAT' || cleanCode === 'QUEEN10' || cleanCode === 'QUEENFOTO10') {
-      setAppliedDiscount(0.10);
-      setVoucherMessage('Kupon Diskon 10% Berhasil Diterapkan!');
+  const subtotal = cart.reduce(
+    (sum, item) => sum + item.unitPrice * item.quantity,
+    0,
+  );
+  const cost = cart.reduce(
+    (sum, item) => sum + item.unitCost * item.quantity,
+    0,
+  );
+  const deliveryFee = delivery === 'AMBIL_STUDIO' ? 0 : district.fee;
+  const discountAmount = Math.round(subtotal * discount);
+  const total = subtotal - discountAmount + deliveryFee;
+  const applyVoucher = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (
+      ['QUEEN10HEMAT', 'QUEEN10', 'QUEENFOTO10'].includes(
+        voucher.trim().toUpperCase(),
+      )
+    ) {
+      setDiscount(0.1);
+      setVoucherMessage('Diskon 10% diterapkan.');
     } else {
-      setVoucherMessage('Kode kupon tidak valid. Dapatkan kupon 10% dengan mengisi Survei 1 Menit!');
+      setDiscount(0);
+      setVoucherMessage('Kode belum dikenali. Periksa kembali kode Anda.');
     }
   };
-
-  const handleCopyAccount = (acc: string) => {
-    navigator.clipboard.writeText(acc);
-    setCopiedAccount(true);
-    setTimeout(() => setCopiedAccount(false), 2000);
-  };
-
-  const handleCheckout = async () => {
-    if (isSubmitting || cart.length === 0) return;
-    if (deliveryMethod !== 'AMBIL_STUDIO' && !customerAddress.trim()) {
-      alert('Mohon isi alamat pengiriman lengkap.'); return;
-    }
-    if (!customerName.trim() || !customerPhone.trim()) {
-      alert('Mohon lengkapi Nama Lengkap dan Nomor WhatsApp Anda untuk konfirmasi pesanan.');
+  const checkout = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (submitting || cart.length === 0) return;
+    setError('');
+    if (
+      !name.trim() ||
+      phone.replace(/\D/g, '').length < 8 ||
+      phone.replace(/\D/g, '').length > 15 ||
+      (delivery !== 'AMBIL_STUDIO' && !address.trim())
+    ) {
+      setError(
+        'Lengkapi nama, nomor WhatsApp yang valid, dan alamat pengiriman bila diperlukan.',
+      );
       return;
     }
-
-    setIsSubmitting(true);
+    setSubmitting(true);
     try {
-      const summaryItems = cart.map(i => `${i.quantity}x ${i.serviceName} (${i.size})`).join(', ');
-
-      const newOrder = await addOrder({
-        customerName,
-        customerPhone,
-        customerAddress: deliveryMethod === 'AMBIL_STUDIO' ? 'Ambil di Studio Jl. Gajah Mada' : customerAddress,
-        district: deliveryMethod === 'GRAB_EXPRESS_PONTIANAK' ? selectedDistrict.name : undefined,
+      const order = await addOrder({
+        customerName: name.trim(),
+        customerPhone: phone.trim(),
+        customerAddress:
+          delivery === 'AMBIL_STUDIO'
+            ? 'Ambil di Studio Jl. Gajah Mada'
+            : address.trim(),
+        district: delivery === 'AMBIL_STUDIO' ? undefined : district.name,
         channel: 'ONLINE',
-        deliveryMethod,
+        deliveryMethod: delivery,
         deliveryFee,
         items: [...cart],
         subtotal,
-        totalAmount,
-        totalCost,
-        totalProfit,
-        paymentMethod,
+        totalAmount: total,
+        totalCost: cost,
+        totalProfit: subtotal - discountAmount - cost,
+        paymentMethod: payment,
         paymentStatus: 'BELUM_BAYAR',
         orderStatus: 'MENUNGGU_BAYAR',
-        staffNotes: `Checkout Keranjang (${cart.length} item): ${summaryItems} · Diskon: ${appliedDiscount > 0 ? '10%' : 'Tidak ada'}`,
-
+        staffNotes: `Pesanan website · Diskon ${discountAmount > 0 ? '10%' : 'tidak ada'} · Menunggu foto asli dan konfirmasi staf.`,
       });
-
-      setCompletedOrder(newOrder);
-      setCompletedOrderId(newOrder.id);
+      setCompleted(order);
       clearCart();
-    } catch (err) {
-      alert('Pesanan belum tersimpan. Keranjang tetap aman. Periksa koneksi lalu coba kembali.');
+      setDiscount(0);
+      setVoucher('');
+      setVoucherMessage('');
+    } catch {
+      setError(
+        'Pesanan belum tersimpan. Keranjang tetap aman. Periksa koneksi lalu coba kembali.',
+      );
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
-
-  const closeDrawer = () => {
-    setIsCartOpen(false);
-    setCompletedOrderId(null);
+  const shop = () => {
+    setCurrentView('layanan');
+    close();
   };
-
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-stone-950/70 backdrop-blur-sm transition-all"
+      className="fixed inset-0 z-[60] bg-stone-950/50 backdrop-blur-sm flex justify-end"
       onClick={(e) => {
-        if (e.target === e.currentTarget) closeDrawer();
+        if (e.target === e.currentTarget) close();
       }}
     >
-      <div
-        className="relative w-full max-w-xl bg-white h-full shadow-2xl border-l border-stone-200 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
+      <aside
+        ref={ref}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="cart-drawer-title"
+        aria-labelledby="cart-title"
+        className="bg-white w-full max-w-[560px] h-dvh flex flex-col shadow-2xl"
       >
-        {/* Header */}
-        <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 py-4 bg-stone-900 text-stone-100 border-b border-stone-800 z-10">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-400 text-stone-950">
-              <ShoppingBag className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 id="cart-drawer-title" className="text-base sm:text-lg font-serif font-bold text-stone-50">
-                {completedOrderId ? 'Checkout Berhasil!' : 'Keranjang Belanja Foto'}
-              </h3>
-              <p className="text-[11px] text-stone-400">
-                {completedOrderId ? 'Terima kasih atas pesanan Anda' : `${cart.length} item siap diproses & dicetak`}
-              </p>
-            </div>
+        <div className="qp-dialog-header">
+          <div>
+            <span className="qp-eyebrow">Pesanan Queen Photo</span>
+            <h2 id="cart-title" className="text-2xl sm:text-3xl mt-2">
+              {completed
+                ? 'Pesanan tersimpan'
+                : step === 'cart'
+                  ? 'Keranjang Anda'
+                  : 'Rincian pemesanan'}
+            </h2>
           </div>
           <button
-            onClick={closeDrawer}
-            className="p-2 rounded-lg text-stone-300 hover:text-white bg-stone-800 hover:bg-stone-700 transition-colors"
-            title="Tutup (Esc)"
+            aria-label="Tutup keranjang"
+            disabled={submitting}
+            className="qp-icon-button"
+            onClick={close}
           >
-            <X className="w-5 h-5" />
+            <X size={21} />
           </button>
         </div>
-
-        {/* Content */}
-        {completedOrderId ? (
-          <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 text-center">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
-              <Check className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-xs text-stone-500 font-mono">NOMOR INVOICE GABUNGAN</span>
-              <p className="text-2xl font-bold font-mono text-stone-900">#{completedOrderId}</p>
-              <p className="text-stone-600 text-xs sm:text-sm mt-2 max-w-md mx-auto">
-                Pesanan tersimpan. Kirim foto asli dan bukti pembayaran ke studio melalui WhatsApp. Pembayaran akan diperiksa staf sebelum pesanan diproses.
-              </p>
-            </div>
-
-            <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 text-left text-xs space-y-2 max-w-md mx-auto">
-              <div className="flex justify-between">
-                <span className="text-stone-500">Pemesan:</span>
-                <strong className="text-stone-900">{customerName} ({customerPhone})</strong>
+        {!completed && cart.length > 0 && (
+          <ol
+            aria-label="Tahap pemesanan"
+            className="flex gap-6 px-6 py-4 bg-stone-50 border-b border-stone-200 text-sm"
+          >
+            <li
+              className={step === 'cart' ? 'font-semibold' : 'text-stone-500'}
+              aria-current={step === 'cart' ? 'step' : undefined}
+            >
+              01 <span className="ml-1">Keranjang</span>
+            </li>
+            <li
+              className={
+                step === 'details' ? 'font-semibold' : 'text-stone-500'
+              }
+              aria-current={step === 'details' ? 'step' : undefined}
+            >
+              02 <span className="ml-1">Checkout</span>
+            </li>
+          </ol>
+        )}
+        <div ref={content} className="qp-dialog-content flex-1">
+          {completed ? (
+            <div className="space-y-6">
+              <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center">
+                <Check size={26} />
               </div>
-              <div className="flex justify-between">
-                <span className="text-stone-500">Metode Pengiriman:</span>
-                <strong className="text-stone-900">
-                  {deliveryMethod === 'AMBIL_STUDIO' ? 'Ambil di Studio Gajah Mada' : 'GrabExpress Pontianak'}
-                </strong>
+              <div>
+                <h3 className="text-xl font-semibold">
+                  Satu langkah lagi: hubungi studio.
+                </h3>
+                <p className="text-sm text-stone-600 mt-3">
+                  Kirim foto asli melalui WhatsApp. Staf akan memeriksa rincian,
+                  harga, dan instruksi pembayaran sebelum pesanan diproses.
+                </p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-stone-500">Total Pembayaran:</span>
-                <strong className="font-mono text-amber-900 font-bold text-sm">
-                  {formatRupiah(completedOrder?.totalAmount ?? totalAmount)}
-                </strong>
+              <div className="qp-notice">
+                <span className="qp-eyebrow">Nomor pesanan</span>
+                <p className="font-mono text-sm break-all mt-2">
+                  {completed.id}
+                </p>
+                <button
+                  className="text-sm underline min-h-11"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(completed.id);
+                      setCopied(true);
+                    } catch {
+                      setCopied(false);
+                    }
+                  }}
+                >
+                  {copied ? 'Nomor disalin' : 'Salin nomor pesanan'}
+                </button>
+                <span className="sr-only" role="status">
+                  {copied ? 'Nomor pesanan disalin' : ''}
+                </span>
               </div>
-            </div>
-
-            {/* Survey CTA banner */}
-            <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl text-left text-xs space-y-2">
-              <div className="flex items-center gap-1.5 text-amber-900 font-bold">
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>Bantu Kami Berbenah & Dapatkan Kupon 10% Tambahan!</span>
-              </div>
-              <p className="text-stone-600 text-[11px] leading-relaxed">
-                Suara Anda sangat berharga bagi perkembangan studio kami sejak 1980. Luangkan waktu 1 menit untuk survei singkat.
-              </p>
-              <button
-                onClick={() => {
-                  closeDrawer();
-                  setIsSurveyModalOpen(true);
-                }}
-                className="w-full py-2 bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold rounded-lg text-xs transition-colors"
-              >
-                Isi Survei Singkat (1 Menit)
-              </button>
-            </div>
-
-            <div className="pt-2 flex flex-col gap-2.5 max-w-md mx-auto">
+              <dl className="text-sm space-y-3">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-stone-500">Total pesanan</dt>
+                  <dd className="font-semibold">
+                    {formatRupiah(completed.totalAmount)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-stone-500">Pembayaran</dt>
+                  <dd>Menunggu konfirmasi</dd>
+                </div>
+              </dl>
               <a
-                href={completedOrder ? createStudioOrderLink(completedOrder) : '#'}
+                href={createStudioOrderLink(completed)}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm"
+                className="qp-button w-full"
               >
-                <span>{import.meta.env.VITE_STUDIO_WHATSAPP ? 'Kirim Foto & Konfirmasi ke Studio' : 'Bagikan Pesanan via WhatsApp (pilih kontak studio)'}</span>
-                <ArrowRight className="w-4 h-4" />
+                <MessageCircle size={18} />
+                {import.meta.env.VITE_STUDIO_WHATSAPP
+                  ? 'Kirim foto & konfirmasi'
+                  : 'Bagikan ke WhatsApp studio'}
               </a>
-
-              <button
-                onClick={() => {
-                  setActiveTrackingId(completedOrderId);
-                  setCurrentView('lacak');
-                  closeDrawer();
-                }}
-                className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold rounded-xl text-xs transition-colors"
-              >
-                Lacak Status Pengerjaan Pesanan
-              </button>
-            </div>
-          </div>
-        ) : cart.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-            <div className="w-20 h-20 rounded-full bg-stone-100 text-stone-400 flex items-center justify-center">
-              <ShoppingBag className="w-10 h-10" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-serif font-bold text-stone-800 text-lg">Keranjang Belanja Kosong</h4>
-              <p className="text-xs text-stone-500 max-w-xs mx-auto">
-                Anda belum menambahkan layanan foto ke keranjang. Pilih cetak foto, photostrip, kanvas, atau pas foto favorit Anda!
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setCurrentView('layanan');
-                closeDrawer();
-              }}
-              className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-sm"
-            >
-              <span>Lihat Katalog Layanan & Harga</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-
-            {/* List of Cart Items */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-stone-200">
-                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                  Daftar Layanan ({cart.length})
-                </span>
-                <button
-                  onClick={clearCart}
-                  className="text-xs text-rose-600 hover:text-rose-800 font-medium transition-colors"
-                >
-                  Kosongkan Keranjang
-                </button>
-              </div>
-
-              {cart.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-stone-50 rounded-xl border border-stone-200 p-3.5 flex flex-col sm:flex-row gap-3 items-start justify-between transition-all hover:border-amber-400"
-                >
-                  <div className="flex gap-3 min-w-0">
-                    {item.photoUrl ? (
-                      <img
-                        src={item.photoUrl}
-                        alt={item.serviceName}
-                        className="w-14 h-14 rounded-lg object-cover border border-stone-300 shrink-0"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-lg bg-stone-200 text-stone-500 flex flex-col items-center justify-center shrink-0 text-[10px] font-mono">
-                        <ShoppingBag className="w-5 h-5 text-stone-400" />
-                        <span>Foto</span>
-                      </div>
-                    )}
-
-                    <div className="min-w-0 space-y-0.5">
-                      <h4 className="font-bold text-stone-900 text-xs sm:text-sm truncate">
-                        {item.serviceName}
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5 text-[11px] text-stone-600">
-                        <span className="bg-white px-1.5 py-0.5 rounded border border-stone-200 font-medium">
-                          {item.size}
-                        </span>
-                        {item.finish && (
-                          <span className="bg-white px-1.5 py-0.5 rounded border border-stone-200">
-                            {item.finish}
-                          </span>
-                        )}
-                        {item.frame && (
-                          <span className="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-medium">
-                            {item.frame}
-                          </span>
-                        )}
-                      </div>
-                      {item.photoFileName && (
-                        <p className="text-[10px] text-emerald-700 font-mono truncate">
-                          ✓ File: {item.photoFileName}
-                        </p>
-                      )}
-                      {item.notes && (
-                        <p className="text-[10px] text-stone-500 italic truncate">
-                          Catatan: "{item.notes}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
-                    <span className="font-mono font-bold text-xs sm:text-sm text-stone-900">
-                      {formatRupiah(item.unitPrice * item.quantity)}
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center border border-stone-300 bg-white rounded-lg overflow-hidden">
-                        <button
-                          onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
-                          className="p-1 hover:bg-stone-100 text-stone-600 transition-colors"
-                          title="Kurangi"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="px-2 font-mono text-xs font-bold text-stone-800">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                          className="p-1 hover:bg-stone-100 text-stone-600 transition-colors"
-                          title="Tambah"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="p-1 text-stone-400 hover:text-rose-600 transition-colors"
-                        title="Hapus dari keranjang"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              <button
-                onClick={() => {
-                  setCurrentView('layanan');
-                  closeDrawer();
-                }}
-                className="w-full py-2 border-2 border-dashed border-stone-300 hover:border-amber-400 text-stone-600 hover:text-stone-900 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Tambah Layanan / Produk Lain ke Keranjang</span>
-              </button>
-            </div>
-
-            {/* Voucher & Discount Code */}
-            <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-                  <Tag className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Punya Kupon Diskon?</span>
-                </span>
-                <span className="text-[10px] text-amber-800 font-medium">Contoh: QUEEN10HEMAT</span>
-              </div>
-              <form onSubmit={handleApplyVoucher} className="flex gap-2">
-                <input
-                  type="text"
-                  value={voucherInput}
-                  onChange={(e) => setVoucherInput(e.target.value)}
-                  placeholder="Ketik kode kupon (misal: QUEEN10HEMAT)"
-                  className="flex-1 px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-mono uppercase focus:ring-1 focus:ring-amber-500"
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold transition-colors whitespace-nowrap"
-                >
-                  Terapkan
-                </button>
-              </form>
-              {voucherMessage && (
-                <p className={`text-[11px] font-medium ${appliedDiscount > 0 ? 'text-emerald-700' : 'text-amber-800'}`}>
-                  {voucherMessage}
+              {!import.meta.env.VITE_STUDIO_WHATSAPP && (
+                <p className="text-xs text-stone-500">
+                  Pilih kontak studio di WhatsApp untuk mengirim rincian ini.
                 </p>
               )}
-            </div>
-
-            {/* Delivery Method Selection */}
-            <div className="space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Pilihan Pengiriman
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label
-                  className={`p-3 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
-                    deliveryMethod === 'GRAB_EXPRESS_PONTIANAK'
-                      ? 'border-amber-400 bg-amber-50/50 ring-1 ring-amber-400/50'
-                      : 'border-stone-200 hover:border-stone-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="cart_delivery"
-                    checked={deliveryMethod === 'GRAB_EXPRESS_PONTIANAK'}
-                    onChange={() => setDeliveryMethod('GRAB_EXPRESS_PONTIANAK')}
-                    className="mt-0.5 text-amber-600 focus:ring-amber-500"
-                  />
-                  <div>
-                    <strong className="block text-stone-900 font-semibold">GrabExpress Pontianak</strong>
-                    <span className="text-[11px] text-stone-500 block">Kirim langsung ke rumah Anda</span>
-                    <span className="text-[11px] text-amber-900 font-mono font-bold mt-1 block">
-                      +{formatRupiah(selectedDistrict.fee)}
-                    </span>
-                  </div>
-                </label>
-
-                <label
-                  className={`p-3 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
-                    deliveryMethod === 'AMBIL_STUDIO'
-                      ? 'border-amber-400 bg-amber-50/50 ring-1 ring-amber-400/50'
-                      : 'border-stone-200 hover:border-stone-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="cart_delivery"
-                    checked={deliveryMethod === 'AMBIL_STUDIO'}
-                    onChange={() => setDeliveryMethod('AMBIL_STUDIO')}
-                    className="mt-0.5 text-amber-600 focus:ring-amber-500"
-                  />
-                  <div>
-                    <strong className="block text-stone-900 font-semibold">Ambil di Studio</strong>
-                    <span className="text-[11px] text-stone-500 block">Jl. Gajah Mada No. 128 Pontianak</span>
-                    <span className="text-[11px] text-emerald-700 font-bold mt-1 block">
-                      GRATIS (Rp 0)
-                    </span>
-                  </div>
-                </label>
-              </div>
-
-              {deliveryMethod === 'GRAB_EXPRESS_PONTIANAK' && (
-                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2 text-xs">
-                  <div>
-                    <label className="block text-stone-700 font-medium mb-1">
-                      Pilih Kecamatan di Pontianak:
-                    </label>
-                    <select
-                      value={selectedDistrict.name}
-                      onChange={(e) => {
-                        const dist = PONTIANAK_DISTRICTS.find(d => d.name === e.target.value);
-                        if (dist) setSelectedDistrict(dist);
-                      }}
-                      className="w-full bg-white border border-stone-300 rounded-lg px-2.5 py-1.5 text-xs text-stone-900"
-                    >
-                      {PONTIANAK_DISTRICTS.map(d => (
-                        <option key={d.name} value={d.name}>
-                          {d.name} (Ongkir: {formatRupiah(d.fee)})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-stone-700 font-medium mb-1">
-                      Alamat Lengkap / Patokan Rumah:
-                    </label>
-                    <input
-                      type="text"
-                      value={customerAddress}
-                      onChange={(e) => setCustomerAddress(e.target.value)}
-                      placeholder="Contoh: Jl. Reformasi Gg. Sejahtera No. 15, samping minimarket"
-                      className="w-full bg-white border border-stone-300 rounded-lg px-2.5 py-1.5 text-xs text-stone-900"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Customer Contact */}
-            <div className="space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Informasi Pemesan
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-stone-700 font-medium mb-1">
-                    Nama Lengkap <span className="text-rose-600">*</span>:
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Nama Anda"
-                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-xs text-stone-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-stone-700 font-medium mb-1">
-                    Nomor WhatsApp <span className="text-rose-600">*</span>:
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="0812xxxxxxxx"
-                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-xs text-stone-900"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Method */}
-            <div className="space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Metode Pembayaran (1x Bayar untuk Semua Layanan)
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('QRIS')}
-                  className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                    paymentMethod === 'QRIS'
-                      ? 'border-amber-400 bg-amber-50/50 font-bold'
-                      : 'border-stone-200'
-                  }`}
-                >
-                  <QrCode className="w-4 h-4 text-amber-700 mb-1" />
-                  <span>QRIS Semua Bank & E-Wallet</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('TRANSFER_BCA')}
-                  className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                    paymentMethod === 'TRANSFER_BCA'
-                      ? 'border-amber-400 bg-amber-50/50 font-bold'
-                      : 'border-stone-200'
-                  }`}
-                >
-                  <CreditCard className="w-4 h-4 text-blue-600 mb-1" />
-                  <span>Transfer BCA</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('TUNAI_KASIR')}
-                  className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                    paymentMethod === 'TUNAI_KASIR'
-                      ? 'border-amber-400 bg-amber-50/50 font-bold'
-                      : 'border-stone-200'
-                  }`}
-                >
-                  <MapPin className="w-4 h-4 text-stone-700 mb-1" />
-                  <span>Bayar di Kasir Toko</span>
-                </button>
-              </div>
-
-              <p className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs">
-                Pilihan ini belum merupakan pembayaran. Setelah pesanan tersimpan, staf akan mengonfirmasi harga dan mengirim QRIS atau rekening resmi melalui WhatsApp. Jangan transfer sebelum konfirmasi.
-              </p>
-            </div>
-
-            {/* Order Cost Summary */}
-            <div className="p-4 bg-stone-100/80 rounded-xl border border-stone-200 space-y-2 text-xs">
-              <div className="flex justify-between text-stone-600">
-                <span>Subtotal ({cart.length} item):</span>
-                <span className="font-mono font-medium">{formatRupiah(subtotal)}</span>
-              </div>
-              {appliedDiscount > 0 && (
-                <div className="flex justify-between text-emerald-700 font-medium">
-                  <span>Kupon Diskon (10%):</span>
-                  <span className="font-mono">-{formatRupiah(discountAmount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-stone-600">
-                <span>Ongkos Kirim:</span>
-                <span className="font-mono font-medium">
-                  {deliveryFee === 0 ? 'Gratis (Ambil di Toko)' : formatRupiah(deliveryFee)}
-                </span>
-              </div>
-              <div className="pt-2 border-t border-stone-300 flex justify-between items-baseline font-bold text-stone-900 text-sm">
-                <span>Total Tagihan:</span>
-                <span className="font-mono text-base sm:text-lg text-amber-900">
-                  {formatRupiah(completedOrder?.totalAmount ?? totalAmount)}
-                </span>
-              </div>
-            </div>
-
-            {/* Checkout Action Button */}
-            <div className="pt-2">
               <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={handleCheckout}
-                className="w-full py-3.5 bg-stone-900 hover:bg-stone-800 active:scale-[0.99] text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                className="qp-button qp-button-secondary w-full"
+                onClick={() => {
+                  setActiveTrackingId(completed.id);
+                  setCurrentView('lacak');
+                  close();
+                }}
               >
-                <span>{isSubmitting ? 'Memproses Pesanan...' : 'Konfirmasi & Checkout Semua Layanan'}</span>
-                <ArrowRight className="w-4 h-4 text-amber-300" />
+                Lihat status pesanan <ArrowRight size={16} />
               </button>
-              <p className="text-center text-[10px] text-stone-500 mt-2">
-                🔒 Data pesanan tersimpan otomatis di database Cloud Firestore & langsung terhubung ke kasir studio.
-              </p>
             </div>
-
+          ) : cart.length === 0 ? (
+            <div className="text-center py-12">
+              <ShoppingBag
+                size={36}
+                strokeWidth={1.25}
+                className="mx-auto text-stone-400"
+              />
+              <h3 className="text-xl font-semibold mt-6">
+                Mulai dari satu momen.
+              </h3>
+              <p className="text-sm text-stone-500 mt-3 max-w-xs mx-auto">
+                Pilih layanan cetak atau paket foto. Semua pilihan Anda akan
+                tersimpan di sini.
+              </p>
+              <button className="qp-button mt-7" onClick={shop}>
+                Jelajahi layanan <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : step === 'cart' ? (
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm text-stone-600 mb-5">
+                  {cart.length} layanan dalam satu pesanan. Anda bisa menambah
+                  layanan sebelum checkout.
+                </p>
+                <ul className="divide-y divide-stone-200">
+                  {cart.map((item) => (
+                    <li key={item.id} className="py-5 first:pt-0">
+                      <div className="flex justify-between gap-4">
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold leading-relaxed">
+                            {item.serviceName}
+                          </h3>
+                          <p className="text-xs text-stone-500 mt-1">
+                            {[
+                              item.size,
+                              item.finish,
+                              item.frame,
+                              item.backgroundColor,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </p>
+                          {item.notes && (
+                            <p className="text-xs text-stone-600 mt-2 break-words">
+                              Catatan: {item.notes}
+                            </p>
+                          )}
+                          {item.photoFileName && (
+                            <p className="text-xs text-stone-500 mt-2 break-all">
+                              File untuk dikirim: {item.photoFileName}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          aria-label={`Hapus ${item.serviceName}`}
+                          className="qp-icon-button shrink-0 text-stone-500"
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      </div>
+                      <div className="flex justify-between items-center mt-4 gap-3">
+                        <div className="inline-flex items-center border border-stone-200 rounded-lg">
+                          <button
+                            className="qp-icon-button"
+                            disabled={item.quantity <= 1}
+                            aria-label={`Kurangi jumlah ${item.serviceName}`}
+                            onClick={() =>
+                              updateCartItemQuantity(item.id, item.quantity - 1)
+                            }
+                          >
+                            <Minus size={15} />
+                          </button>
+                          <span
+                            aria-label={`Jumlah ${item.serviceName}`}
+                            className="min-w-8 text-center text-sm font-semibold"
+                          >
+                            {item.quantity}
+                          </span>
+                          <button
+                            className="qp-icon-button"
+                            disabled={item.quantity >= 999}
+                            aria-label={`Tambah jumlah ${item.serviceName}`}
+                            onClick={() =>
+                              updateCartItemQuantity(item.id, item.quantity + 1)
+                            }
+                          >
+                            <Plus size={15} />
+                          </button>
+                        </div>
+                        <strong className="text-sm tabular-nums">
+                          {formatRupiah(item.unitPrice * item.quantity)}
+                        </strong>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <button
+                className="qp-button qp-button-secondary w-full"
+                onClick={shop}
+              >
+                <Plus size={17} />
+                Tambah layanan lain
+              </button>
+              <details className="border-t border-stone-200 pt-5">
+                <summary className="text-sm cursor-pointer min-h-11">
+                  Punya kode promo?
+                </summary>
+                <form onSubmit={applyVoucher} className="flex gap-2 mt-3">
+                  <label htmlFor="cart-voucher" className="sr-only">
+                    Kode promo
+                  </label>
+                  <input
+                    id="cart-voucher"
+                    className="qp-field flex-1 uppercase"
+                    placeholder="Masukkan kode"
+                    value={voucher}
+                    onChange={(e) => setVoucher(e.target.value)}
+                  />
+                  <button
+                    className="qp-button qp-button-secondary"
+                    type="submit"
+                  >
+                    Terapkan
+                  </button>
+                </form>
+                {voucherMessage && (
+                  <p role="status" className="text-sm text-stone-600 mt-3">
+                    {voucherMessage}
+                  </p>
+                )}
+              </details>
+              <div className="qp-notice flex items-start gap-3">
+                <MessageCircle size={18} className="shrink-0 mt-1" />
+                <p>
+                  Foto asli dikirim melalui WhatsApp setelah checkout. Belum ada
+                  pembayaran pada langkah ini.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <form id="checkout-form" onSubmit={checkout} className="space-y-7">
+              <fieldset disabled={submitting} className="space-y-7">
+                <legend className="sr-only">Informasi pemesanan</legend>
+                <section>
+                  <h3 className="text-base font-semibold mb-4">
+                    01 · Informasi pemesan
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="qp-label" htmlFor="customer-name">
+                        Nama lengkap{' '}
+                        <span className="text-stone-500 font-normal">
+                          (wajib)
+                        </span>
+                      </label>
+                      <input
+                        id="customer-name"
+                        className="qp-field"
+                        autoComplete="name"
+                        required
+                        maxLength={100}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Nama Anda"
+                      />
+                    </div>
+                    <div>
+                      <label className="qp-label" htmlFor="customer-phone">
+                        Nomor WhatsApp{' '}
+                        <span className="text-stone-500 font-normal">
+                          (wajib)
+                        </span>
+                      </label>
+                      <input
+                        id="customer-phone"
+                        className="qp-field"
+                        type="tel"
+                        autoComplete="tel"
+                        required
+                        maxLength={20}
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="0812xxxxxxxx"
+                      />
+                      <p className="text-xs text-stone-500 mt-2">
+                        Untuk konfirmasi rincian dan kabar pesanan.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+                <fieldset>
+                  <legend className="text-base font-semibold mb-4">
+                    02 · Terima pesanan
+                  </legend>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {(
+                      [
+                        [
+                          'AMBIL_STUDIO',
+                          'Ambil di studio',
+                          'Tanpa biaya kirim',
+                          MapPin,
+                        ],
+                        [
+                          'GRAB_EXPRESS_PONTIANAK',
+                          'Kirim ke alamat',
+                          'Ongkir sesuai kecamatan',
+                          Truck,
+                        ],
+                      ] as const
+                    ).map(([id, title, desc, Icon]) => (
+                      <label
+                        key={id}
+                        className={`p-4 border rounded-xl cursor-pointer flex gap-3 items-start ${delivery === id ? 'border-stone-900 bg-stone-50' : 'border-stone-200'}`}
+                      >
+                        <input
+                          type="radio"
+                          name="delivery"
+                          value={id}
+                          checked={delivery === id}
+                          onChange={() => setDelivery(id)}
+                        />
+                        <span>
+                          <Icon size={17} className="mb-2" />
+                          <strong className="text-sm block">{title}</strong>
+                          <span className="text-xs text-stone-500 block mt-1">
+                            {desc}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {delivery === 'AMBIL_STUDIO' ? (
+                    <p className="text-xs text-stone-500 mt-3">
+                      Jl. Gajah Mada No. 128, Pontianak. Tunggu konfirmasi
+                      sebelum datang.
+                    </p>
+                  ) : (
+                    <div className="space-y-4 mt-4">
+                      <div>
+                        <label htmlFor="customer-district" className="qp-label">
+                          Kecamatan tujuan
+                        </label>
+                        <select
+                          id="customer-district"
+                          className="qp-field"
+                          value={district.name}
+                          onChange={(e) => {
+                            const selected = PONTIANAK_DISTRICTS.find(
+                              (d) => d.name === e.target.value,
+                            );
+                            if (selected) setDistrict(selected);
+                          }}
+                        >
+                          {PONTIANAK_DISTRICTS.map((d) => (
+                            <option key={d.name}>{d.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="customer-address" className="qp-label">
+                          Alamat lengkap & patokan
+                        </label>
+                        <textarea
+                          id="customer-address"
+                          className="qp-field"
+                          autoComplete="street-address"
+                          required
+                          rows={3}
+                          maxLength={1000}
+                          placeholder="Nama jalan, nomor rumah, dan patokan"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                        />
+                      </div>
+                      <p className="text-xs text-stone-500">
+                        Estimasi ongkir {formatRupiah(deliveryFee)}. Staf
+                        mengonfirmasi ketersediaan pengiriman.
+                      </p>
+                    </div>
+                  )}
+                </fieldset>
+                <fieldset>
+                  <legend className="text-base font-semibold mb-4">
+                    03 · Rencana pembayaran
+                  </legend>
+                  <div className="space-y-2">
+                    {(
+                      [
+                        ['QRIS', 'QRIS / e-wallet'],
+                        ['TRANSFER_BCA', 'Transfer bank'],
+                        ['TUNAI_KASIR', 'Bayar di kasir'],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <label
+                        key={id}
+                        className={`flex items-center gap-3 p-3.5 border rounded-lg text-sm cursor-pointer ${payment === id ? 'border-stone-900 bg-stone-50' : 'border-stone-200'}`}
+                      >
+                        <input
+                          name="payment"
+                          type="radio"
+                          checked={payment === id}
+                          onChange={() => setPayment(id)}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="qp-notice mt-4 flex gap-3">
+                    <ShieldCheck size={20} className="shrink-0" />
+                    <span>
+                      Belum perlu transfer. Staf akan mengonfirmasi harga dan
+                      mengirim instruksi pembayaran resmi.
+                    </span>
+                  </p>
+                </fieldset>
+              </fieldset>
+              {error && (
+                <p role="alert" className="qp-error">
+                  {error}
+                </p>
+              )}
+            </form>
+          )}
+        </div>
+        {!completed && cart.length > 0 && (
+          <div className="qp-dialog-footer space-y-4">
+            <dl className="text-sm space-y-2">
+              <div className="flex justify-between">
+                <dt className="text-stone-500">Subtotal layanan</dt>
+                <dd>{formatRupiah(subtotal)}</dd>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-stone-500">Diskon 10%</dt>
+                  <dd>−{formatRupiah(discountAmount)}</dd>
+                </div>
+              )}
+              {step === 'details' && (
+                <div className="flex justify-between">
+                  <dt className="text-stone-500">
+                    {delivery === 'AMBIL_STUDIO'
+                      ? 'Ambil di studio'
+                      : 'Estimasi pengiriman'}
+                  </dt>
+                  <dd>
+                    {deliveryFee === 0 ? 'Gratis' : formatRupiah(deliveryFee)}
+                  </dd>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold text-lg pt-2">
+                <dt>{step === 'cart' ? 'Total layanan' : 'Total pesanan'}</dt>
+                <dd className="tabular-nums">
+                  {formatRupiah(
+                    step === 'cart' ? subtotal - discountAmount : total,
+                  )}
+                </dd>
+              </div>
+            </dl>
+            {step === 'cart' ? (
+              <button
+                className="qp-button w-full"
+                onClick={() => setStep('details')}
+              >
+                Lanjut ke checkout <ArrowRight size={17} />
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  className="qp-button qp-button-secondary"
+                  disabled={submitting}
+                  onClick={() => setStep('cart')}
+                  aria-label="Kembali ke keranjang"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <button
+                  form="checkout-form"
+                  type="submit"
+                  disabled={submitting}
+                  className="qp-button flex-1"
+                >
+                  {submitting ? (
+                    <>
+                      <LoaderCircle className="animate-spin" size={18} />
+                      Menyimpan…
+                    </>
+                  ) : (
+                    <>
+                      Kirim pesanan <ArrowRight size={17} />
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-center text-stone-500">
+              {step === 'cart'
+                ? 'Ongkir ditampilkan setelah memilih pengiriman.'
+                : 'Pesanan diproses setelah konfirmasi staf.'}
+            </p>
           </div>
         )}
-      </div>
+      </aside>
     </div>
   );
 };
