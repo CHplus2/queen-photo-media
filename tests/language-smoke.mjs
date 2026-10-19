@@ -1,3 +1,4 @@
+import { selectLanguage } from './language-helper.mjs';
 import assert from 'node:assert/strict';
 const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE || 'playwright'
@@ -7,7 +8,7 @@ const browser = await chromium.launch({
   args: ['--no-sandbox'],
 });
 try {
-  for (const width of [390, 1440]) {
+  for (const width of [320, 390, 1280, 1440]) {
     const context = await browser.newContext({
       viewport: { width, height: 1000 },
     });
@@ -18,9 +19,13 @@ try {
     await page.goto('http://127.0.0.1:3000/');
     await page.getByRole('heading', { name: /Cetak foto, pas foto/ }).waitFor();
     assert.equal(await page.locator('html').getAttribute('lang'), 'id');
-    await page
-      .getByRole('combobox', { name: 'Bahasa / Language' })
-      .selectOption('en');
+    assert.ok(
+      (await page
+        .locator('header')
+        .evaluate((el) => el.getBoundingClientRect().height)) < 100,
+      'Customer header should remain a single compact row.',
+    );
+    await selectLanguage(page, 'en');
     await page
       .getByRole('heading', { name: /Photo prints, ID photos/ })
       .waitFor();
@@ -30,14 +35,12 @@ try {
       .getByRole('group', { name: 'Service categories' })
       .getByRole('button', { name: 'Photo prints', exact: true })
       .click();
-    const jumbo = catalog
-      .locator('article')
-      .filter({
-        has: page.getByRole('heading', {
-          name: 'Jumbo 10R Photo Print (20x25 cm)',
-          exact: true,
-        }),
-      });
+    const jumbo = catalog.locator('article').filter({
+      has: page.getByRole('heading', {
+        name: 'Jumbo 10R Photo Print (20x25 cm)',
+        exact: true,
+      }),
+    });
     await jumbo.getByText('Photo prints', { exact: true }).waitFor();
     await jumbo
       .getByText(/An ideal size for display in your living room/)
@@ -89,9 +92,7 @@ try {
     await page.getByRole('textbox', { name: /Full name/ }).fill('Nama asli');
     // Close first because dialogs correctly trap focus and keep their form state.
     await page.getByRole('button', { name: 'Close cart', exact: true }).click();
-    await page
-      .getByRole('combobox', { name: 'Bahasa / Language' })
-      .selectOption('id');
+    await selectLanguage(page, 'id');
     await page
       .getByRole('button', { name: /Buka keranjang/ })
       .first()
@@ -107,9 +108,7 @@ try {
     await page
       .getByRole('button', { name: 'Tutup keranjang', exact: true })
       .click();
-    await page
-      .getByRole('combobox', { name: 'Bahasa / Language' })
-      .selectOption('en');
+    await selectLanguage(page, 'en');
     await page.reload();
     await page
       .getByRole('heading', { name: /Photo prints, ID photos/ })

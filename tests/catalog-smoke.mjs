@@ -1,3 +1,4 @@
+import { selectLanguage } from './language-helper.mjs';
 import assert from 'node:assert/strict';
 const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE || 'playwright'
@@ -115,9 +116,7 @@ try {
         [],
       );
     }
-    await page
-      .getByRole('combobox', { name: 'Bahasa / Language' })
-      .selectOption('en');
+    await selectLanguage(page, 'en');
     await page
       .getByRole('button', { name: 'Names & prices', exact: true })
       .click();

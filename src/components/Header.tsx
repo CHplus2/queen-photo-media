@@ -126,6 +126,9 @@ export const Header: React.FC = () => {
             </nav>
           )}
           <div className="flex items-center gap-2">
+            <div className="hidden xl:block">
+              <LanguageSwitcher />
+            </div>
             {!staff ? (
               <>
                 <button
@@ -142,14 +145,6 @@ export const Header: React.FC = () => {
                     </span>
                   )}
                 </button>
-                <span className="hidden sm:inline-flex">
-                  <button
-                    className="qp-button"
-                    onClick={() => navigate('layanan')}
-                  >
-                    {tr('Mulai pesan')} <ArrowUpRight size={17} />
-                  </button>
-                </span>
               </>
             ) : (
               <>
@@ -204,7 +199,6 @@ export const Header: React.FC = () => {
             )}
           </div>
         </div>
-        <LanguageSwitcher />
         {staff && (
           <nav
             aria-label={tr('Navigasi staf')}
@@ -229,6 +223,9 @@ export const Header: React.FC = () => {
             className="xl:hidden border-t border-stone-200 bg-white max-h-[calc(100dvh-80px)] overflow-y-auto"
           >
             <div className="qp-container py-4 grid gap-1">
+              <div className="border-b border-stone-200 pb-3 mb-2">
+                <LanguageSwitcher showLabel />
+              </div>
               {links.map(([view, label]) => (
                 <button
                   key={view}

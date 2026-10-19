@@ -131,7 +131,7 @@ export function CashClosing({
                 ['Uang tunai yang dihitung sekarang (Rp)', counted, setCounted],
               ].map(([label, value, setter]) => (
                 <label className="block" key={String(label)}>
-                  <span className="qp-label">{String(label)}</span>
+                  <span className="qp-label">{tr(String(label))}</span>
                   <input
                     className="qp-field"
                     type="number"

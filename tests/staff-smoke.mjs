@@ -1,3 +1,4 @@
+import { selectLanguage } from './language-helper.mjs';
 import assert from 'node:assert/strict';
 const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE || 'playwright'
@@ -29,7 +30,7 @@ try {
  const value={services,orders,cart,setIsCartOpen:setOpen,isCartOpen:open,activeRole:'ADMIN',isAdminAuthenticated:true,isSupervisor:!window.__cashierOnly,currentView:view,setCurrentView:setView,setActiveRole:()=>{},logoutAdmin:async()=>{},monthlyRevenueTarget:30000000,inventoryReady:true,isFirebaseConnected:true,stockLogs:[],inventory:[{id:'paper',name:'Kertas foto',currentStock:10,maxStock:20,lowStockThreshold:2,unit:'meter',type:'ROLL',costPerUnit:1}],rollConfigs:[{id:'roll',name:'Roll Uji',rollWidthCm:15.2,rollLengthMeter:65,rollCostIdr:420000,inkCostPerSqMeter:15000,overheadPerUnit:500}],sheetConfigs:[{id:'sheet',sizeName:'A4',costPerSheetIdr:2000,inkCostIdr:1000,overheadIdr:200}],updateRollConfig:()=>{if(window.__failConfig)throw new Error('storage failed');},updateSheetConfig:()=>{if(window.__failConfig)throw new Error('storage failed');},surveys:[],adminEmail:'test@example.test',
  addOrder:async(data,id)=>{window.__saveCalls=(window.__saveCalls||0)+1;await new Promise(r=>setTimeout(r,120));const order={...data,id:'QP-'+id,createdAt:now(),payments:data.initialPaymentAmount>0?[{id:'initial',amount:data.initialPaymentAmount,method:data.paymentMethod,at:now(),by}]:[],recordedBy:by,workflowVersion:2,inventoryStatus:data.orderStatus==='SELESAI'?'DEDUCTED':'PENDING',...(data.paymentStatus==='LUNAS'?{paidAt:now(),paymentVerifiedBy:by}:{}),history:[]};setOrders(old=>[order,...old]);window.__lastSale=order;return order;},
  updateOrderStatus:async(id,status,cancel)=>{window.__lastStatus={id,status,cancel};setOrders(old=>old.map(o=>o.id===id?{...o,orderStatus:status,cancellationReason:cancel?.reason,cancelledAt:status==='DIBATALKAN'?now():undefined}:o));},
- updateOrderPayment:async(id,paymentStatus,payment)=>{window.__lastPayment={id,paymentStatus};setOrders(old=>old.map(o=>o.id===id?{...o,paymentStatus,payments:[...(o.payments||[]),{id:payment.id,amount:payment.amount,method:payment.method,at:now(),by}],paidAt:now(),paymentVerifiedBy:by}:o));},
+ updateOrderPayment:async(id,paymentStatus,payment)=>{window.__paymentCalls=(window.__paymentCalls||0)+1;window.__lastPayment={id,paymentStatus};setOrders(old=>old.map(o=>o.id===id?{...o,paymentStatus,payments:[...(o.payments||[]),{id:payment.id,amount:payment.amount,method:payment.method,at:now(),by}],paidAt:now(),paymentVerifiedBy:by}:o));},
  reconcileStock:async()=>{},recordInventoryCount:async()=>{},createInventoryItem:async()=>{},updateService:async()=>{},triggerPasswordReset:async()=>{},setMonthlyRevenueTarget:()=>{},setIsSurveyModalOpen:()=>{},setIsOrderModalOpen:()=>{},restockItem:async()=>{},clearCart:()=>setCart([])};
  return React.createElement(C.Provider,{value},children);}export function useStudio(){return useContext(C);}`;
     await page.route('**/src/context/StudioContext.tsx*', (r) =>
@@ -136,7 +137,13 @@ try {
     await page
       .getByRole('button', { name: 'Periksa pembayaran', exact: true })
       .click();
-    await page.getByRole('button', { name: /Uang sudah masuk/ }).click();
+    await page
+      .getByRole('button', { name: /Uang sudah masuk/ })
+      .evaluate((button) => {
+        button.click();
+        button.click();
+      });
+    assert.equal(await page.evaluate(() => window.__paymentCalls), 1);
     await page.getByText('Pembayaran diperiksa: Staff Uji').waitFor();
     await page
       .getByRole('button', {
@@ -170,6 +177,52 @@ try {
     const deposit = await page.evaluate(() => window.__lastSale);
     assert.equal(deposit.paymentStatus, 'SEBAGIAN');
     assert.equal(deposit.initialPaymentAmount, 10000);
+    await nav('Pesanan');
+    const openCustomer = async (name) =>
+      page
+        .getByRole('article')
+        .filter({ hasText: name })
+        .getByRole('button', { name: 'Buka pesanan', exact: true })
+        .click();
+    await openCustomer('Pelanggan DP');
+    await page
+      .getByRole('button', { name: 'Batalkan pesanan', exact: true })
+      .click();
+    await page
+      .getByLabel('Alasan pembatalan', { exact: true })
+      .fill('Batal untuk pelanggan DP saja');
+    await page
+      .getByLabel('Bahan sudah terpakai?', { exact: true })
+      .selectOption('unused');
+    await page
+      .getByRole('button', { name: 'Tutup pesanan', exact: true })
+      .click();
+    await page
+      .getByRole('combobox', { name: 'Tampilkan pesanan' })
+      .selectOption('all');
+    await openCustomer('Pelanggan Nanti');
+    await page
+      .getByRole('button', { name: 'Batalkan pesanan', exact: true })
+      .click();
+    assert.equal(
+      await page.getByLabel('Alasan pembatalan', { exact: true }).inputValue(),
+      '',
+    );
+    assert.equal(
+      await page
+        .getByLabel('Bahan sudah terpakai?', { exact: true })
+        .inputValue(),
+      'used',
+    );
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Konfirmasi pembatalan', exact: true })
+        .isDisabled(),
+      true,
+    );
+    await page
+      .getByRole('button', { name: 'Tutup pesanan', exact: true })
+      .click();
     await nav('Ringkasan toko');
     await page
       .getByRole('heading', { name: 'Ringkasan toko', exact: true })
@@ -299,12 +352,20 @@ try {
         [],
       );
     }
-    await page
-      .getByRole('combobox', { name: 'Bahasa / Language' })
-      .selectOption('en');
+    await selectLanguage(page, 'en');
     await page
       .getByRole('heading', {
         name: 'Automatic material settings',
+        exact: true,
+      })
+      .waitFor();
+    await nav('Shop summary');
+    await page
+      .getByText("Count cash & close today's drawer", { exact: true })
+      .click();
+    await page
+      .getByRole('spinbutton', {
+        name: 'Opening cash (Rp)',
         exact: true,
       })
       .waitFor();
@@ -323,9 +384,7 @@ try {
       })
       .fill('100000');
     assert.match(await page.getByText(/Change: Rp/).textContent(), /90,000/);
-    await page
-      .getByRole('combobox', { name: 'Bahasa / Language' })
-      .selectOption('id');
+    await selectLanguage(page, 'id');
     assert.equal(
       await page
         .getByRole('spinbutton', { name: 'Jumlah', exact: true })

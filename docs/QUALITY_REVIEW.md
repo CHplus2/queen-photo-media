@@ -18,3 +18,11 @@ Staff browser tests use fixtures. They verify UI behavior, not production author
 Automatic stock handling depends on measured inventory and configured usage. Special sizes/frames without a reliable recipe require review. The cost simulator uses local device settings and estimated costs; it does not establish audited net profit. Firebase remains a large main bundle dependency despite lazy staff pages and English text.
 
 For staff adoption, keep Indonesian as the default, use Cashier for immediate walk-in sales and use the queue only for unfinished work. Observe real employees completing a sale, correcting a quantity and recording a later payment before declaring the interface friction-free. Automated checks cannot establish ease of use for every employee.
+
+## Header and staff-action follow-up
+
+The language control now shares the desktop header row. On smaller screens it is in the mobile menu with a full label and native language names. It retains native select keyboard/touch behavior and a minimum 44px height. The customer header stays below 100px with its menu closed at 320, 390, 1280 and 1440px widths.
+
+Opening an order clears any previous payment/cancellation form, cancellation reason and material disposition. The safe default is that already-used material is not returned to stock. A synchronous action lock prevents repeated clicks from submitting two staff actions before the screen disables. Stock/payment transaction protections still apply independently. Cash-closing input labels now follow the selected language.
+
+Regression browser checks cover cross-order cancellation state, repeated payment clicks and English cash-closing labels, in addition to the existing walk-in, deposit, later job and handover flows. These use isolated fixtures; they do not prove live bank settlement or live database rule enforcement. Immediate walk-in sales should still be recorded once in Cashier; unfinished jobs use the queue. More mandatory status steps would add work without evidence of a benefit.

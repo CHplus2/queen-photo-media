@@ -1,7 +1,7 @@
 import { orderItemName } from '../i18n/catalogText';
 import { tr } from '../i18n/runtime';
 import { paidAmount, remainingAmount } from '../utils/payments';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { useDialog } from '../hooks/useDialog';
 import type { Order } from '../types';
@@ -41,6 +41,7 @@ export const StaffOrderQueue: React.FC<{
   const [paymentId, setPaymentId] = useState(() => crypto.randomUUID());
   const [verify, setVerify] = useState(false);
   const [busy, setBusy] = useState(false);
+  const actionLock = useRef(false);
   const [error, setError] = useState('');
   const order = orders.find((o) => o.id === selected);
   const close = () => {
@@ -57,11 +58,13 @@ export const StaffOrderQueue: React.FC<{
       (scope === 'all' ||
         (o.orderStatus !== 'DIBATALKAN' &&
           (o.orderStatus !== 'SELESAI' || o.paymentStatus !== 'LUNAS'))) &&
-      `${o.id} ${o.customerName} ${o.customerPhone} ${o.items.map((i) => i.serviceName).join(' ')}`
+      `${o.id} ${o.customerName} ${o.customerPhone} ${o.items.map((i) => `${i.serviceName} ${orderItemName(i)}`).join(' ')}`
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
   const action = async (callback: () => Promise<void>) => {
+    if (actionLock.current) return;
+    actionLock.current = true;
     setError('');
     setBusy(true);
     try {
@@ -73,6 +76,7 @@ export const StaffOrderQueue: React.FC<{
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Perubahan belum tersimpan.');
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   };
@@ -147,6 +151,13 @@ export const StaffOrderQueue: React.FC<{
               className="qp-button qp-button-secondary w-full mt-5"
               onClick={() => {
                 setSelected(o.id);
+                setCancel(false);
+                setVerify(false);
+                setReason('');
+                setMaterials('used');
+                setPaymentInput('');
+                setPaymentMethod(o.paymentMethod);
+                setPaymentId(crypto.randomUUID());
                 setError('');
               }}
             >
@@ -381,6 +392,7 @@ export const StaffOrderQueue: React.FC<{
                         </span>
                         <select
                           className="qp-field"
+                          aria-label={tr('Cara pembayaran uang masuk')}
                           value={paymentMethod}
                           onChange={(e) =>
                             setPaymentMethod(
@@ -479,6 +491,7 @@ export const StaffOrderQueue: React.FC<{
                         </span>
                         <select
                           className="qp-field"
+                          aria-label={tr('Bahan sudah terpakai?')}
                           value={materials}
                           onChange={(e) =>
                             setMaterials(e.target.value as 'unused' | 'used')
