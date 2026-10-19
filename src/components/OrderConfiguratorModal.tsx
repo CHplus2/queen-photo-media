@@ -1,3 +1,4 @@
+import { frameAdjustment } from '../utils/catalogEditing';
 import { ServiceArtwork } from './ServiceArtwork';
 import React, { useEffect, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
@@ -41,14 +42,8 @@ export const OrderConfiguratorModal: React.FC = () => {
     setExpanded(false);
   }, [isOrderModalOpen, service?.id]);
   if (!isOrderModalOpen || !service) return null;
-  const extra =
-    frame === 'Minimalis Hitam' || frame === 'Minimalis Putih'
-      ? [25000, 12000]
-      : frame === 'Kayu Jati Elegan'
-        ? [55000, 28000]
-        : frame === 'Ukiran Emas Klasik'
-          ? [75000, 38000]
-          : [0, 0];
+  const adjustment = frameAdjustment(service, frame);
+  const extra = [adjustment.price, adjustment.cost];
   const price = service.basePrice + extra[0];
   const quote = ['restorasi_edit', 'banner', 'foto_studio'].includes(
     service.category,

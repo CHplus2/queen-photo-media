@@ -1,3 +1,4 @@
+import { frameAdjustment } from '../utils/catalogEditing';
 import { readOrderRecord } from '../utils/orderRecords';
 import {
   saveWalkin,
@@ -524,23 +525,16 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
       service.options?.sizes?.[0] || service.unit || 'Standar';
     const defaultFinish =
       service.options?.finishes?.[0] || 'Glossy Anti-Luntur';
-    const defaultFrame = service.options?.frames?.[0] || 'Tanpa Bingkai';
+    const defaultFrame = 'Tanpa Bingkai';
     const defaultBg =
       service.options?.backgroundColors?.[0] ||
       (service.category === 'pas_foto'
         ? 'Merah (Tahun Ganjil KTP)'
         : undefined);
 
-    let price = service.basePrice;
-    let cost = service.estimatedCost;
-
-    if (
-      defaultFrame === 'Minimalis Hitam' ||
-      defaultFrame === 'Minimalis Putih'
-    ) {
-      price += 25000;
-      cost += 12000;
-    }
+    const extra = frameAdjustment(service, defaultFrame);
+    const price = service.basePrice + extra.price;
+    const cost = service.estimatedCost + extra.cost;
 
     const item: OrderItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -623,7 +617,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)+/g, '') || 'service';
-    const id = `${slug}-${Date.now().toString().slice(-4)}`;
+    const id = `${slug}-${crypto.randomUUID().slice(0, 8)}`;
 
     const fullService: ServiceItem = {
       ...newService,
@@ -631,20 +625,8 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
       isActive: newService.isActive ?? true,
     };
 
-    setServices((prev) => {
-      const next = [fullService, ...prev];
-      try {
-        localStorage.setItem('queen_photo_services', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-
-    try {
-      const cleanData = cleanForFirestore(fullService);
-      await setDoc(doc(db, 'services', id), cleanData);
-    } catch (e) {
-      console.error('Firestore add service error:', e);
-    }
+    await setDoc(doc(db, 'services', id), cleanForFirestore(fullService));
+    setServices((previous) => [fullService, ...previous]);
 
     return fullService;
   };
@@ -656,12 +638,12 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!isAdminAuthenticated) throw new Error('Izin staf diperlukan.');
     const current = services.find((service) => service.id === id);
     if (!current) throw new Error('Layanan tidak ditemukan.');
-    const next = { ...current, ...updated, id };
-    await setDoc(doc(db, 'services', id), cleanForFirestore(next), {
-      merge: true,
-    });
+    const { id: _ignoredId, ...patch } = updated;
+    await updateDoc(doc(db, 'services', id), cleanForFirestore(patch));
     setServices((previous) =>
-      previous.map((service) => (service.id === id ? next : service)),
+      previous.map((service) =>
+        service.id === id ? { ...service, ...patch, id } : service,
+      ),
     );
   };
 

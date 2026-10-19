@@ -21,6 +21,7 @@ const staffLinks: [AppView, string][] = [
   ['pos', 'Kasir'],
   ['orders', 'Pesanan'],
   ['supervision', 'Ringkasan toko'],
+  ['menu', 'Produk & harga'],
   ['inventory', 'Inventaris'],
   ['rekap', 'Laporan'],
   ['settings', 'Pengaturan'],

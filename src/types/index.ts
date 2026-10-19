@@ -41,6 +41,7 @@ export interface ServiceItem {
     sizes?: string[];
     finishes?: string[];
     frames?: string[];
+    framePrices?: Record<string, { price: number; cost: number }>;
     backgroundColors?: string[];
   };
 }

@@ -22,7 +22,7 @@ export function materialPlan(items: OrderItem[], services: ServiceItem[]) {
     if (
       item.frame ||
       (service?.options?.sizes &&
-        service.options.sizes.length > 1 &&
+        service.options.sizes.length > 0 &&
         item.size !== service.options.sizes[0] &&
         item.size !== service.unit)
     ) {
