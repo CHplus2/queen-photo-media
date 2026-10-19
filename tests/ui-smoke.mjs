@@ -75,6 +75,7 @@ try {
       .getByRole('button', { name: 'Pilih layanan', exact: true })
       .first()
       .click();
+    await page.getByRole('dialog').waitFor();
     await noOverflow('configure');
     await page.keyboard.press('Escape');
     await page

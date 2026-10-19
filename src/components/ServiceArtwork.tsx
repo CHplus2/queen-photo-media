@@ -1,9 +1,9 @@
 import React from 'react';
-import studio from '../assets/images/queen_photo_modern_studio_1791787204044.jpg';
-import strips from '../assets/images/queen_photo_genz_photostrips_1791787249531.jpg';
-import restoration from '../assets/images/queen_photo_vintage_restoration_1791784459211.jpg';
-import gallery from '../assets/images/queen_photo_gallery_wall_1791784471362.jpg';
-import gifts from '../assets/images/queen_photo_products_mug_album_1791784497018.jpg';
+import studio from '../assets/images/queen_photo_modern_studio_1791787204044.webp';
+import strips from '../assets/images/queen_photo_genz_photostrips_1791787249531.webp';
+import restoration from '../assets/images/queen_photo_vintage_restoration_1791784459211.webp';
+import gallery from '../assets/images/queen_photo_gallery_wall_1791784471362.webp';
+import gifts from '../assets/images/queen_photo_products_mug_album_1791784497018.webp';
 import type { ServiceCategory } from '../types';
 import { Image } from 'lucide-react';
 const artwork: Partial<Record<ServiceCategory, string>> = {

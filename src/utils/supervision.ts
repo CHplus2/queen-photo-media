@@ -1,3 +1,4 @@
+import { isUnverifiedRequest } from './orderRecords';
 import { paidAmount } from './payments';
 import type { Order } from '../types';
 import { businessDate, reportableOrders, salesSummary } from './sales';
@@ -9,21 +10,23 @@ export function supervision(orders: Order[], day: string) {
         businessDate(value) === day,
     );
   const today = orders.filter((o) => onDate(o.createdAt));
-  const payments = orders.flatMap((o) =>
-    o.payments
-      ? o.payments
-          .filter((p) => onDate(p.at))
-          .map((p) => ({
-            ...o,
-            id: `${o.id}:${p.id}`,
-            totalAmount: p.amount,
-            paymentMethod: p.method,
-            paidAt: p.at,
-          }))
-      : o.paymentStatus === 'LUNAS' && onDate(o.paidAt || o.createdAt)
-        ? [o]
-        : [],
-  );
+  const payments = orders
+    .filter((o) => !isUnverifiedRequest(o))
+    .flatMap((o) =>
+      o.payments
+        ? o.payments
+            .filter((p) => onDate(p.at))
+            .map((p) => ({
+              ...o,
+              id: `${o.id}:${p.id}`,
+              totalAmount: p.amount,
+              paymentMethod: p.method,
+              paidAt: p.at,
+            }))
+        : o.paymentStatus === 'LUNAS' && onDate(o.paidAt || o.createdAt)
+          ? [o]
+          : [],
+    );
   return {
     today,
     sales: salesSummary(reportableOrders(orders, day)),

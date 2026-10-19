@@ -1,5 +1,5 @@
 import React from 'react';
-import photo from '../assets/images/queen_photo_vintage_restoration_1791784459211.jpg';
+import photo from '../assets/images/queen_photo_vintage_restoration_1791784459211.webp';
 import { useStudio } from '../context/StudioContext';
 import { ArrowRight } from 'lucide-react';
 export const RestorationShowcase: React.FC = () => {

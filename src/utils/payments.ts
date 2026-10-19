@@ -1,5 +1,7 @@
+import { isUnverifiedRequest } from './orderRecords';
 import type { Order, PaymentEntry } from '../types';
 export function paidAmount(order: Order): number {
+  if (isUnverifiedRequest(order)) return 0;
   return order.payments
     ? order.payments.reduce((n, p) => n + p.amount, 0)
     : order.paymentStatus === 'LUNAS'

@@ -1,5 +1,5 @@
 import React from 'react';
-import photo from '../assets/images/queen_photo_gallery_wall_1791784471362.jpg';
+import photo from '../assets/images/queen_photo_gallery_wall_1791784471362.webp';
 import { useStudio } from '../context/StudioContext';
 import { ArrowRight, MapPin } from 'lucide-react';
 export const HeritageStoryView: React.FC = () => {

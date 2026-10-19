@@ -1,7 +1,7 @@
-import galleryPhoto from '../assets/images/queen_photo_gallery_wall_1791784471362.jpg';
+import galleryPhoto from '../assets/images/queen_photo_gallery_wall_1791784471362.webp';
 import React from 'react';
-import studioPhoto from '../assets/images/queen_photo_modern_studio_1791787204044.jpg';
-import stripPhoto from '../assets/images/queen_photo_genz_photostrips_1791787249531.jpg';
+import studioPhoto from '../assets/images/queen_photo_modern_studio_1791787204044.webp';
+import stripPhoto from '../assets/images/queen_photo_genz_photostrips_1791787249531.webp';
 import { useStudio } from '../context/StudioContext';
 import { ArrowRight, MapPin, Sparkles } from 'lucide-react';
 import { formatRupiah } from '../utils/formatters';

@@ -1,5 +1,5 @@
 import React from 'react';
-import photo from '../assets/images/queen_photo_genz_photostrips_1791787249531.jpg';
+import photo from '../assets/images/queen_photo_genz_photostrips_1791787249531.webp';
 import { useStudio } from '../context/StudioContext';
 import { formatRupiah } from '../utils/formatters';
 import { ArrowRight, Sparkles } from 'lucide-react';

@@ -1,3 +1,4 @@
+import { readOrderRecord } from '../utils/orderRecords';
 import {
   saveWalkin,
   changeOrderStatus,
@@ -39,6 +40,8 @@ import {
   deleteDoc,
   query,
   where,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import {
   signInAnonymously,
@@ -46,12 +49,9 @@ import {
   signOut,
   sendPasswordResetEmail,
   updatePassword,
-  onAuthStateChanged,
+  onIdTokenChanged,
   User,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
 } from 'firebase/auth';
-import * as OTPAuth from 'otpauth';
 
 export type AppView =
   | 'beranda'
@@ -152,7 +152,6 @@ interface StudioContextType {
   firebaseUser: User | null;
   adminEmail: string;
   setAdminEmail: (email: string) => void;
-  adminPassword: string;
   loginWithFirebaseAuth: (
     email: string,
     pass: string,
@@ -161,22 +160,10 @@ interface StudioContextType {
   logoutAdmin: () => Promise<void>;
   changeAdminPassword: (newPass: string) => Promise<void>;
   triggerPasswordReset: (email: string) => Promise<string>;
-  resetTwoFactorEmergency: () => Promise<void>;
-
-  // Real 3rd-party Authenticator (2FA TOTP)
-  isTwoFactorEnabled: boolean;
-  twoFactorSecret: string;
-  verifyTotpCode: (code: string, secretOverride?: string) => boolean;
-  enableTwoFactor: (
-    secret: string,
-    testCode: string,
-  ) => Promise<{ success: boolean; message: string }>;
-  disableTwoFactor: () => Promise<void>;
-  getOtpAuthUri: (secretStr?: string) => string;
-  generateNewTwoFactorSecret: () => string;
 
   isSyncing: boolean;
   isFirebaseConnected: boolean;
+  invalidOrderIds: string[];
   seedFirestoreDataNow: () => Promise<void>;
 }
 
@@ -186,6 +173,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   // Never populate production reports from demonstration data or old browser caches.
+  const [invalidOrderIds, setInvalidOrderIds] = useState<string[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   // Services / Menu Items State
   const [services, setServices] = useState<ServiceItem[]>(() => {
@@ -221,20 +209,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Admin Account & Credentials
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [adminEmail, setAdminEmail] = useState<string>(() => {
-    const saved = localStorage.getItem('queen_photo_admin_email');
-    if (saved && saved !== 'heroch94@gmail.com') return saved;
-    return 'queenphotomedia@gmail.com';
-  });
-  const [adminPassword, setAdminPassword] = useState('');
-
-  // 2FA Google Authenticator State (RFC 6238 Base32 Secret)
-  const [twoFactorSecret, setTwoFactorSecret] = useState<string>(() => {
-    return localStorage.getItem('queen_2fa_secret') || 'JBSWY3DPEHPK3PXP';
-  });
-  const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('queen_2fa_enabled') === 'true';
-  });
+  const [adminEmail, setAdminEmail] = useState('');
 
   // Role Separation
   const [isSupervisor, setIsSupervisor] = useState(false);
@@ -268,22 +243,17 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Customer Feedback Surveys State
-  const [surveys, setSurveys] = useState<CustomerFeedbackSurvey[]>(() => {
-    try {
-      const saved = localStorage.getItem('queen_photo_surveys');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return [];
-  });
+  const [surveys, setSurveys] = useState<CustomerFeedbackSurvey[]>([]);
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
 
   // Sync state to LocalStorage as reliable cache
   useEffect(() => {
     localStorage.removeItem('queen_photo_orders');
     localStorage.removeItem('queen_photo_admin_password');
+    localStorage.removeItem('queen_photo_surveys');
+    localStorage.removeItem('queen_photo_admin_email');
+    localStorage.removeItem('queen_2fa_secret');
+    localStorage.removeItem('queen_2fa_enabled');
   }, [orders]);
 
   useEffect(() => {
@@ -303,38 +273,36 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [cart]);
 
   useEffect(() => {
-    localStorage.setItem('queen_photo_surveys', JSON.stringify(surveys));
-  }, [surveys]);
-
-  // Realtime Firestore sync for Customer Surveys
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    try {
-      if (!isAdminAuthenticated) return;
-      const surveysColRef = collection(db, 'customer_surveys');
-      unsubscribe = onSnapshot(
-        surveysColRef,
-        (snapshot) => {
-          if (!snapshot.empty) {
-            const list: CustomerFeedbackSurvey[] = [];
-            snapshot.forEach((docSnap) => {
-              list.push(docSnap.data() as CustomerFeedbackSurvey);
-            });
-            list.sort(
-              (a, b) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime(),
-            );
-            setSurveys(list);
-          }
-        },
-        () => {},
-      );
-    } catch {}
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [isAdminAuthenticated]);
+    setSurveys([]);
+    if (!isAdminAuthenticated || !isSupervisor || currentView !== 'strategi')
+      return;
+    return onSnapshot(
+      collection(db, 'customer_surveys'),
+      (snapshot) => {
+        setSurveys(
+          snapshot.docs
+            .map(
+              (doc) =>
+                ({ ...doc.data(), id: doc.id }) as CustomerFeedbackSurvey,
+            )
+            .filter(
+              (s) =>
+                typeof s.createdAt === 'string' &&
+                Number.isFinite(Date.parse(s.createdAt)) &&
+                Number.isFinite(s.satisfactionRating) &&
+                Array.isArray(s.demandedNewServices) &&
+                typeof s.primaryNeed === 'string' &&
+                s.demandedNewServices.every((v) => typeof v === 'string') &&
+                (s.customerName == null ||
+                  typeof s.customerName === 'string') &&
+                (s.feedbackText == null || typeof s.feedbackText === 'string'),
+            )
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+        );
+      },
+      () => setSurveys([]),
+    );
+  }, [isAdminAuthenticated, isSupervisor, currentView]);
 
   useEffect(() => {
     sessionStorage.setItem(
@@ -343,24 +311,38 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, [isAdminAuthenticated]);
 
-  // Only a server-issued custom claim can authorize staff access.
+  // Ignore stale token resolutions after logout/account switches.
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, async (usr) => {
+    let revision = 0;
+    const unsubscribe = onIdTokenChanged(auth, async (usr) => {
+      const current = ++revision;
       setFirebaseUser(usr);
       setIsAdminAuthenticated(false);
       setIsSupervisor(false);
       setActiveRole('CUSTOMER');
-      if (usr) {
+      setAdminEmail('');
+      setOrders([]);
+      setInvalidOrderIds([]);
+      setSurveys([]);
+      setIsFirebaseConnected(false);
+      if (!usr) return;
+      try {
         const token = await usr.getIdTokenResult();
+        if (current !== revision || auth.currentUser?.uid !== usr.uid) return;
         if (token.claims.staff === true) {
           setIsSupervisor(token.claims.owner === true);
           setAdminEmail(usr.email || '');
           setIsAdminAuthenticated(true);
           setActiveRole('ADMIN');
         }
+      } catch {
+        /* Remain unauthorized until Firebase confirms the token. */
       }
     });
-    return () => unsubAuth();
+    return () => {
+      revision++;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -388,30 +370,25 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
         ordersColRef,
         { includeMetadataChanges: true },
         (snapshot) => {
+          if (auth.currentUser?.uid !== firebaseUser.uid) return;
           setIsFirebaseConnected(
             !snapshot.metadata.fromCache &&
               !snapshot.metadata.hasPendingWrites &&
               navigator.onLine,
           );
 
-          const firestoreOrders = snapshot.docs.map((snapshot) => {
-            const order = { ...snapshot.data(), id: snapshot.id } as Order;
-            if (
-              order.channel === 'ONLINE' &&
-              order.paymentStatus === 'BELUM_BAYAR' &&
-              order.orderStatus === 'MENUNGGU_BAYAR'
-            )
-              return {
-                ...order,
-                inventoryStatus: 'PENDING' as const,
-                materialUsage: undefined,
-                history: [],
-                recordedBy: undefined,
-                paymentVerifiedBy: undefined,
-                paidAt: undefined,
-              };
-            return order;
-          });
+          const records = snapshot.docs.map((snapshot) => ({
+            id: snapshot.id,
+            order: readOrderRecord(snapshot.id, snapshot.data()),
+          }));
+          setInvalidOrderIds(
+            records
+              .filter((record) => !record.order)
+              .map((record) => record.id),
+          );
+          const firestoreOrders = records.flatMap((record) =>
+            record.order ? [record.order] : [],
+          );
           setOrders(
             firestoreOrders.sort((a, b) =>
               String(b.createdAt || '').localeCompare(
@@ -442,8 +419,9 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
       const servicesColRef = collection(db, 'services');
       unsubscribe = onSnapshot(
         servicesColRef,
+        { includeMetadataChanges: true },
         (snapshot) => {
-          if (!snapshot.empty) {
+          if (!snapshot.metadata.fromCache || !snapshot.empty) {
             const firestoreServices: ServiceItem[] = [];
             snapshot.forEach((docSnap) => {
               const data = docSnap.data() as ServiceItem;
@@ -468,31 +446,6 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
-  // Load 2FA status from Firestore admin profile if available
-  useEffect(() => {
-    try {
-      if (!isAdminAuthenticated) return;
-      const adminDocRef = doc(db, 'admins', 'heroch94');
-      const unsub = onSnapshot(adminDocRef, (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          if (typeof data.isTwoFactorEnabled === 'boolean') {
-            setIsTwoFactorEnabled(data.isTwoFactorEnabled);
-            localStorage.setItem(
-              'queen_2fa_enabled',
-              String(data.isTwoFactorEnabled),
-            );
-          }
-          if (data.twoFactorSecret) {
-            setTwoFactorSecret(data.twoFactorSecret);
-            localStorage.setItem('queen_2fa_secret', data.twoFactorSecret);
-          }
-        }
-      });
-      return () => unsub();
-    } catch {}
-  }, [isAdminAuthenticated]);
-
   useEffect(() => {
     setInventoryReady(false);
     setInventory([]);
@@ -500,33 +453,44 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!isAdminAuthenticated) return;
     const inventorySubscription = onSnapshot(
       collection(db, 'inventory'),
+      { includeMetadataChanges: true },
       (snapshot) => {
         setInventory(
           snapshot.docs.map(
             (item) => ({ ...item.data(), id: item.id }) as InventoryItem,
           ),
         );
-        setInventoryReady(true);
+        setInventoryReady(
+          !snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites,
+        );
       },
       () => setInventoryReady(false),
     );
-    const logsSubscription = onSnapshot(
-      collection(db, 'stock_logs'),
+    return inventorySubscription;
+  }, [isAdminAuthenticated]);
+
+  // Fetch only visible movement history. ORDER_STATE documents have no timestamp
+  // and are excluded by orderBy; do not download a duplicate private order ledger.
+  useEffect(() => {
+    setStockLogs([]);
+    if (!isAdminAuthenticated || !isSupervisor || currentView !== 'inventory')
+      return;
+    return onSnapshot(
+      query(
+        collection(db, 'stock_logs'),
+        orderBy('timestamp', 'desc'),
+        limit(250),
+      ),
       (snapshot) => {
         setStockLogs(
-          snapshot.docs
-            .filter((log) => log.data().type !== 'ORDER_STATE')
-            .map((log) => ({ ...log.data(), id: log.id }) as StockLog)
-            .sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
+          snapshot.docs.map(
+            (log) => ({ ...log.data(), id: log.id }) as StockLog,
+          ),
         );
       },
       () => setStockLogs([]),
     );
-    return () => {
-      inventorySubscription();
-      logsSubscription();
-    };
-  }, [isAdminAuthenticated]);
+  }, [isAdminAuthenticated, isSupervisor, currentView]);
 
   const recordInventoryCount = async (
     id: string,
@@ -593,6 +557,8 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     setCart((prev) => [...prev, item]);
+    setIsOrderModalOpen(false);
+    setIsSurveyModalOpen(false);
     setIsCartOpen(true);
   };
 
@@ -618,10 +584,13 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const submitSurvey = async (
     surveyData: Omit<CustomerFeedbackSurvey, 'id' | 'createdAt'>,
   ): Promise<string> => {
+    const user = auth.currentUser || (await signInAnonymously(auth)).user;
     const discountCode = 'QUEEN10HEMAT';
     const newSurvey: CustomerFeedbackSurvey = {
       ...surveyData,
-      id: `survey-${Date.now()}`,
+      ownerUid: user.uid,
+      feedbackText: surveyData.feedbackText || '',
+      id: `survey-${crypto.randomUUID()}`,
       createdAt: new Date().toISOString(),
       claimedDiscountCode: discountCode,
     };
@@ -819,6 +788,8 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const openOrderWithService = (service: ServiceItem) => {
+    setIsCartOpen(false);
+    setIsSurveyModalOpen(false);
     setSelectedServiceForOrder(service);
     setIsOrderModalOpen(true);
   };
@@ -834,12 +805,16 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
       passwordInput,
     );
     const token = await result.user.getIdTokenResult(true);
+    if (auth.currentUser?.uid !== result.user.uid)
+      throw new Error('Sesi login sudah berubah. Silakan masuk kembali.');
     if (token.claims.staff !== true) {
       await signOut(auth);
       throw new Error(
         'Akun ini belum memiliki izin staf. Hubungi pemilik studio.',
       );
     }
+    setIsSupervisor(token.claims.owner === true);
+    setAdminEmail(result.user.email || '');
     setIsAdminAuthenticated(true);
     setActiveRole('ADMIN');
     return { requires2FA: false };
@@ -855,9 +830,14 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const logoutAdmin = async () => {
-    try {
-      await signOut(auth);
-    } catch {}
+    await signOut(auth);
+    setOrders([]);
+    setSurveys([]);
+    setInventory([]);
+    setStockLogs([]);
+    setIsSupervisor(false);
+    setAdminEmail('');
+    setCurrentView('beranda');
     setFirebaseUser(null);
     setIsAdminAuthenticated(false);
     setActiveRole('CUSTOMER');
@@ -881,139 +861,13 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
     try {
       await sendPasswordResetEmail(auth, cleanEmail);
-      return `Link reset password resmi dari Google Firebase telah dikirim ke ${cleanEmail}. Silakan periksa kotak masuk (inbox) atau folder spam email Anda.`;
-    } catch (err: any) {
-      const code = err?.code;
-      if (code === 'auth/user-not-found') {
-        throw new Error(
-          `Email ${cleanEmail} belum terdaftar di database Firebase. Pastikan email sudah terdaftar.`,
-        );
-      } else if (code === 'auth/invalid-email') {
+    } catch (error: any) {
+      if (error?.code === 'auth/invalid-email')
         throw new Error('Format alamat email tidak valid.');
-      } else {
-        throw new Error(
-          err?.message || 'Gagal mengirim email reset password via Firebase.',
-        );
-      }
+      if (error?.code !== 'auth/user-not-found')
+        throw new Error('Tautan reset belum dapat dikirim. Coba lagi nanti.');
     }
-  };
-
-  const resetTwoFactorEmergency = async (): Promise<void> => {
-    setIsTwoFactorEnabled(false);
-    localStorage.setItem('queen_2fa_enabled', 'false');
-    try {
-      await setDoc(
-        doc(db, 'admins', 'heroch94'),
-        {
-          isTwoFactorEnabled: false,
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true },
-      );
-    } catch {}
-  };
-
-  // REAL 3RD-PARTY GOOGLE AUTHENTICATOR (RFC 6238 TOTP ENGINE)
-  const verifyTotpCode = (code: string, secretOverride?: string): boolean => {
-    try {
-      const secretToUse =
-        secretOverride || twoFactorSecret || 'JBSWY3DPEHPK3PXP';
-      const cleanSecret = secretToUse.replace(/[\s-]/g, '').toUpperCase();
-
-      const totp = new OTPAuth.TOTP({
-        issuer: 'Queen Photo Pontianak',
-        label: adminEmail || 'queenphotomedia@gmail.com',
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30,
-        secret: OTPAuth.Secret.fromBase32(cleanSecret),
-      });
-
-      // Window: 1 accepts current, previous (-30s), and next (+30s) period for phone clock drift
-      const delta = totp.validate({ token: code.trim(), window: 1 });
-      return delta !== null;
-    } catch (err) {
-      console.error('TOTP verification error:', err);
-      return false;
-    }
-  };
-
-  const enableTwoFactor = async (
-    secret: string,
-    testCode: string,
-  ): Promise<{ success: boolean; message: string }> => {
-    const isValid = verifyTotpCode(testCode, secret);
-    if (!isValid) {
-      return {
-        success: false,
-        message:
-          'Kode 6-digit tidak valid. Pastikan waktu jam di HP Anda sudah sinkron (otomatis) dan masukkan kode yang baru sebelum berganti.',
-      };
-    }
-
-    const cleanSecret = secret.replace(/[\s-]/g, '').toUpperCase();
-    setTwoFactorSecret(cleanSecret);
-    setIsTwoFactorEnabled(true);
-    localStorage.setItem('queen_2fa_secret', cleanSecret);
-    localStorage.setItem('queen_2fa_enabled', 'true');
-
-    try {
-      await setDoc(
-        doc(db, 'admins', 'heroch94'),
-        {
-          email: adminEmail,
-          isTwoFactorEnabled: true,
-          twoFactorSecret: cleanSecret,
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true },
-      );
-    } catch (e) {
-      console.warn('Firestore 2fa save fallback:', e);
-    }
-
-    return {
-      success: true,
-      message:
-        '2FA Google Authenticator berhasil diaktifkan dan terhubung ke HP Anda!',
-    };
-  };
-
-  const disableTwoFactor = async (): Promise<void> => {
-    setIsTwoFactorEnabled(false);
-    localStorage.setItem('queen_2fa_enabled', 'false');
-    try {
-      await setDoc(
-        doc(db, 'admins', 'heroch94'),
-        {
-          isTwoFactorEnabled: false,
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true },
-      );
-    } catch (e) {
-      console.warn('Firestore 2fa disable fallback:', e);
-    }
-  };
-
-  const generateNewTwoFactorSecret = (): string => {
-    const sec = new OTPAuth.Secret({ size: 20 });
-    return sec.base32;
-  };
-
-  const getOtpAuthUri = (secretStr?: string): string => {
-    const s = (secretStr || twoFactorSecret || 'JBSWY3DPEHPK3PXP')
-      .replace(/[\s-]/g, '')
-      .toUpperCase();
-    const totp = new OTPAuth.TOTP({
-      issuer: 'Queen Photo Pontianak',
-      label: adminEmail || 'queenphotomedia@gmail.com',
-      algorithm: 'SHA1',
-      digits: 6,
-      period: 30,
-      secret: OTPAuth.Secret.fromBase32(s),
-    });
-    return totp.toString();
+    return 'Jika alamat ini terdaftar, tautan reset akan dikirim. Periksa kotak masuk dan spam.';
   };
 
   const seedFirestoreDataNow = async () => {
@@ -1067,7 +921,13 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
         updateCartItemQuantity,
         clearCart,
         isCartOpen,
-        setIsCartOpen,
+        setIsCartOpen: (open) => {
+          setIsCartOpen(open);
+          if (open) {
+            setIsOrderModalOpen(false);
+            setIsSurveyModalOpen(false);
+          }
+        },
 
         // Customer Feedback & Market Research
         surveys,
@@ -1081,29 +941,19 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
         deleteService,
         resetServicesToDefault,
 
-        // Authentication & 2FA
+        // Firebase authentication
         firebaseUser,
         adminEmail,
         setAdminEmail,
-        adminPassword,
         loginWithFirebaseAuth,
         registerAdminWithFirebaseAuth,
         logoutAdmin,
         changeAdminPassword,
         triggerPasswordReset,
-        resetTwoFactorEmergency,
-
-        // 3rd-party Google Authenticator TOTP
-        isTwoFactorEnabled,
-        twoFactorSecret,
-        verifyTotpCode,
-        enableTwoFactor,
-        disableTwoFactor,
-        getOtpAuthUri,
-        generateNewTwoFactorSecret,
 
         isSyncing,
         isFirebaseConnected,
+        invalidOrderIds,
         seedFirestoreDataNow,
       }}
     >

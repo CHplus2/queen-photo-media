@@ -1,38 +1,103 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { PageBoundary } from './components/PageBoundary';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { StudioProvider, useStudio, AppView } from './context/StudioContext';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
 import { RestorationShowcase } from './components/RestorationShowcase';
 import { ServicesCatalog } from './components/ServicesCatalog';
-import { OrderConfiguratorModal } from './components/OrderConfiguratorModal';
-import { CartDrawer } from './components/CartDrawer';
-import { CustomerSurveyModal } from './components/CustomerSurveyModal';
-import { OrderTrackingView } from './components/OrderTrackingView';
-import { CustomerTrendingView } from './components/CustomerTrendingView';
-import { HeritageStoryView } from './components/HeritageStoryView';
-import { MarketStrategyView } from './components/MarketStrategyView';
-import { OwnerDashboard } from './components/OwnerDashboard';
-import { AdminPosView } from './components/AdminPosView';
-import { InventoryView } from './components/InventoryView';
-import { AdminMenuView } from './components/AdminMenuView';
-import { CostProfitCalculatorView } from './components/CostProfitCalculatorView';
-import { SalesAnalyticsView } from './components/SalesAnalyticsView';
-import { AdminSettingsView } from './components/AdminSettingsView';
-import { ReceiptModal } from './components/ReceiptModal';
 import { Footer } from './components/Footer';
 import { Order } from './types';
 import { formatRupiah } from './utils/formatters';
 import { ShoppingBag } from 'lucide-react';
 
+const MarketStrategyView = lazy(() =>
+  import('./components/MarketStrategyView').then((module) => ({
+    default: module.MarketStrategyView,
+  })),
+);
+const OwnerDashboard = lazy(() =>
+  import('./components/OwnerDashboard').then((module) => ({
+    default: module.OwnerDashboard,
+  })),
+);
+const AdminPosView = lazy(() =>
+  import('./components/AdminPosView').then((module) => ({
+    default: module.AdminPosView,
+  })),
+);
+const InventoryView = lazy(() =>
+  import('./components/InventoryView').then((module) => ({
+    default: module.InventoryView,
+  })),
+);
+const AdminMenuView = lazy(() =>
+  import('./components/AdminMenuView').then((module) => ({
+    default: module.AdminMenuView,
+  })),
+);
+const CostProfitCalculatorView = lazy(() =>
+  import('./components/CostProfitCalculatorView').then((module) => ({
+    default: module.CostProfitCalculatorView,
+  })),
+);
+const SalesAnalyticsView = lazy(() =>
+  import('./components/SalesAnalyticsView').then((module) => ({
+    default: module.SalesAnalyticsView,
+  })),
+);
+const AdminSettingsView = lazy(() =>
+  import('./components/AdminSettingsView').then((module) => ({
+    default: module.AdminSettingsView,
+  })),
+);
+const ReceiptModal = lazy(() =>
+  import('./components/ReceiptModal').then((module) => ({
+    default: module.ReceiptModal,
+  })),
+);
+const OrderTrackingView = lazy(() =>
+  import('./components/OrderTrackingView').then((module) => ({
+    default: module.OrderTrackingView,
+  })),
+);
+const CustomerTrendingView = lazy(() =>
+  import('./components/CustomerTrendingView').then((module) => ({
+    default: module.CustomerTrendingView,
+  })),
+);
+const HeritageStoryView = lazy(() =>
+  import('./components/HeritageStoryView').then((module) => ({
+    default: module.HeritageStoryView,
+  })),
+);
+const CustomerSurveyModal = lazy(() =>
+  import('./components/CustomerSurveyModal').then((module) => ({
+    default: module.CustomerSurveyModal,
+  })),
+);
+const OrderConfiguratorModal = lazy(() =>
+  import('./components/OrderConfiguratorModal').then((module) => ({
+    default: module.OrderConfiguratorModal,
+  })),
+);
+const CartDrawer = lazy(() =>
+  import('./components/CartDrawer').then((module) => ({
+    default: module.CartDrawer,
+  })),
+);
+
 const MainAppContent: React.FC = () => {
   const {
     currentView,
     isSupervisor,
+    isAdminAuthenticated,
     setCurrentView,
     activeRole,
     setActiveRole,
     cart,
     isCartOpen,
+    isSurveyModalOpen,
+    isOrderModalOpen,
     setIsCartOpen,
   } = useStudio();
 
@@ -51,6 +116,18 @@ const MainAppContent: React.FC = () => {
     )
       setCurrentView('pos');
   }, [activeRole, isSupervisor, currentView, setCurrentView]);
+  const [openedDialogs, setOpenedDialogs] = useState({
+    cart: false,
+    survey: false,
+    order: false,
+  });
+  useEffect(() => {
+    setOpenedDialogs((previous) => ({
+      cart: previous.cart || !!isCartOpen,
+      survey: previous.survey || !!isSurveyModalOpen,
+      order: previous.order || !!isOrderModalOpen,
+    }));
+  }, [isCartOpen, isSurveyModalOpen, isOrderModalOpen]);
   const previousView = useRef(currentView);
   useEffect(() => {
     const titles: Record<string, string> = {
@@ -74,6 +151,10 @@ const MainAppContent: React.FC = () => {
   const [selectedReceiptOrder, setSelectedReceiptOrder] =
     useState<Order | null>(null);
 
+  useEffect(() => {
+    if (!isAdminAuthenticated) setSelectedReceiptOrder(null);
+  }, [isAdminAuthenticated]);
+
   return (
     <div className="min-h-screen flex flex-col bg-stone-50 text-stone-900 font-sans selection:bg-amber-100 selection:text-amber-900">
       {/* Single Unified Header for both Customer & Admin - No Duplicate Navbar! */}
@@ -85,91 +166,101 @@ const MainAppContent: React.FC = () => {
         tabIndex={-1}
         className={`flex-1 outline-none ${activeRole === 'ADMIN' ? 'admin-workspace' : ''}`}
       >
-        {/* CUSTOMER VIEWS */}
-        {activeRole === 'CUSTOMER' && (
-          <>
-            {currentView === 'beranda' && (
-              <>
-                <HeroSection />
-                <ServicesCatalog />
-                <RestorationShowcase />
-              </>
-            )}
+        <Suspense
+          fallback={
+            <p role="status" className="qp-container py-8">
+              Memuat halaman…
+            </p>
+          }
+        >
+          {/* CUSTOMER VIEWS */}
+          {activeRole === 'CUSTOMER' && (
+            <>
+              {currentView === 'beranda' && (
+                <>
+                  <HeroSection />
+                  <ServicesCatalog />
+                  <RestorationShowcase />
+                </>
+              )}
 
-            {currentView === 'layanan' && <ServicesCatalog />}
+              {currentView === 'layanan' && <ServicesCatalog />}
 
-            {currentView === 'trending' && <CustomerTrendingView />}
+              {currentView === 'trending' && <CustomerTrendingView />}
 
-            {currentView === 'lacak' && <OrderTrackingView />}
+              {currentView === 'lacak' && <OrderTrackingView />}
 
-            {currentView === 'cerita' && <HeritageStoryView />}
+              {currentView === 'cerita' && <HeritageStoryView />}
 
-            {/* Fallbacks if role switched */}
-            {(currentView === 'orders' ||
-              currentView === 'supervision' ||
-              currentView === 'pos' ||
-              currentView === 'menu' ||
-              currentView === 'inventory' ||
-              currentView === 'kalkulator' ||
-              currentView === 'rekap' ||
-              currentView === 'settings' ||
-              currentView === 'strategi') && (
-              <>
-                <HeroSection />
-                <ServicesCatalog />
-                <RestorationShowcase />
-              </>
-            )}
-          </>
-        )}
+              {/* Fallbacks if role switched */}
+              {(currentView === 'orders' ||
+                currentView === 'supervision' ||
+                currentView === 'pos' ||
+                currentView === 'menu' ||
+                currentView === 'inventory' ||
+                currentView === 'kalkulator' ||
+                currentView === 'rekap' ||
+                currentView === 'settings' ||
+                currentView === 'strategi') && (
+                <>
+                  <HeroSection />
+                  <ServicesCatalog />
+                  <RestorationShowcase />
+                </>
+              )}
+            </>
+          )}
 
-        {/* ADMIN VIEWS */}
-        {activeRole === 'ADMIN' && (
-          <>
-            {currentView === 'pos' && (
-              <AdminPosView
-                onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
-              />
-            )}
+          {/* ADMIN VIEWS */}
+          {activeRole === 'ADMIN' && (
+            <>
+              {currentView === 'pos' && (
+                <AdminPosView
+                  onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
+                />
+              )}
 
-            {currentView === 'orders' && (
-              <AdminPosView
-                initialTab="queue"
-                onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
-              />
-            )}
-            {currentView === 'supervision' && <OwnerDashboard />}
+              {currentView === 'orders' && (
+                <AdminPosView
+                  initialTab="queue"
+                  onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
+                />
+              )}
+              {currentView === 'supervision' && <OwnerDashboard />}
 
-            {isSupervisor && currentView === 'menu' && <AdminMenuView />}
+              {isSupervisor && currentView === 'menu' && <AdminMenuView />}
 
-            {isSupervisor && currentView === 'inventory' && <InventoryView />}
+              {isSupervisor && currentView === 'inventory' && <InventoryView />}
 
-            {isSupervisor && currentView === 'kalkulator' && (
-              <CostProfitCalculatorView />
-            )}
+              {isSupervisor && currentView === 'kalkulator' && (
+                <CostProfitCalculatorView />
+              )}
 
-            {isSupervisor && currentView === 'rekap' && <SalesAnalyticsView />}
+              {isSupervisor && currentView === 'rekap' && (
+                <SalesAnalyticsView />
+              )}
 
-            {isSupervisor && currentView === 'settings' && (
-              <AdminSettingsView />
-            )}
+              {isSupervisor && currentView === 'settings' && (
+                <AdminSettingsView />
+              )}
 
-            {isSupervisor && currentView === 'strategi' && (
-              <MarketStrategyView />
-            )}
+              {isSupervisor && currentView === 'strategi' && (
+                <MarketStrategyView />
+              )}
 
-            {/* Fallbacks if navigated from customer view */}
-            {currentView === 'beranda' && (
-              <AdminPosView
-                onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
-              />
-            )}
-            {currentView === 'layanan' && <ServicesCatalog />}
-            {currentView === 'trending' && <CustomerTrendingView />}
-            {currentView === 'lacak' && <OrderTrackingView />}
-            {currentView === 'cerita' && <HeritageStoryView />}
-          </>
-        )}
+              {/* Fallbacks if navigated from customer view */}
+              {currentView === 'beranda' && (
+                <AdminPosView
+                  onPrintReceipt={(order) => setSelectedReceiptOrder(order)}
+                />
+              )}
+              {currentView === 'layanan' && <ServicesCatalog />}
+              {currentView === 'trending' && <CustomerTrendingView />}
+              {currentView === 'lacak' && <OrderTrackingView />}
+              {currentView === 'cerita' && <HeritageStoryView />}
+            </>
+          )}
+        </Suspense>
       </main>
 
       {/* Floating Cart Button for Customers when items exist */}
@@ -211,13 +302,25 @@ const MainAppContent: React.FC = () => {
       )}
 
       {/* Global Modals & Drawers */}
-      <CartDrawer />
-      <CustomerSurveyModal />
-      <OrderConfiguratorModal />
-      <ReceiptModal
-        order={selectedReceiptOrder}
-        onClose={() => setSelectedReceiptOrder(null)}
-      />
+      <Suspense
+        fallback={
+          <p role="status" className="qp-notice fixed bottom-4 right-4 z-50">
+            Memuat formulir…
+          </p>
+        }
+      >
+        {(isCartOpen || openedDialogs.cart) && <CartDrawer />}
+        {(isSurveyModalOpen || openedDialogs.survey) && <CustomerSurveyModal />}
+        {(isOrderModalOpen || openedDialogs.order) && (
+          <OrderConfiguratorModal />
+        )}
+        {isAdminAuthenticated && selectedReceiptOrder && (
+          <ReceiptModal
+            order={selectedReceiptOrder}
+            onClose={() => setSelectedReceiptOrder(null)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
@@ -225,7 +328,9 @@ const MainAppContent: React.FC = () => {
 export default function App() {
   return (
     <StudioProvider>
-      <MainAppContent />
+      <PageBoundary>
+        <MainAppContent />
+      </PageBoundary>
     </StudioProvider>
   );
 }

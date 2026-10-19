@@ -37,6 +37,7 @@ export const Header: React.FC = () => {
     cart,
     setIsCartOpen,
   } = useStudio();
+  const [logoutError, setLogoutError] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   useEffect(() => {
@@ -78,6 +79,11 @@ export const Header: React.FC = () => {
       <a className="skip-link" href="#main-content">
         Langsung ke konten
       </a>
+      {logoutError && (
+        <p role="alert" className="qp-error">
+          {logoutError}
+        </p>
+      )}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200">
         <div className="qp-container flex items-center justify-between gap-4 min-h-[80px]">
           <button
@@ -152,8 +158,15 @@ export const Header: React.FC = () => {
                   aria-label="Keluar dari akun staf"
                   className="qp-icon-button"
                   onClick={async () => {
-                    await logoutAdmin();
-                    navigate('beranda');
+                    try {
+                      await logoutAdmin();
+                      navigate('beranda');
+                      setLogoutError('');
+                    } catch {
+                      setLogoutError(
+                        'Belum berhasil keluar. Coba lagi sebelum meninggalkan perangkat.',
+                      );
+                    }
                   }}
                 >
                   <LogOut size={19} />

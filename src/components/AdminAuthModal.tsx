@@ -19,6 +19,10 @@ export const AdminAuthModal: React.FC<Props> = ({ isOpen, onClose }) => {
     if (!busy) onClose();
   });
   useEffect(() => {
+    if (!isOpen) {
+      setPassword('');
+      setVisible(false);
+    }
     if (isOpen) {
       setEmail('');
       setPassword('');

@@ -197,6 +197,7 @@ export interface SheetPaperConfig {
 export type AgeDemographic = '<20' | '20-29' | '30-45' | '>45';
 
 export interface CustomerFeedbackSurvey {
+  ownerUid?: string;
   id: string;
   createdAt: string;
   customerName?: string;

@@ -65,6 +65,7 @@ export const AdminPosView: React.FC<{
 }> = ({ onPrintReceipt, initialTab = 'sale' }) => {
   const {
     services,
+    invalidOrderIds = [],
     addOrder,
     setCurrentView,
     isFirebaseConnected,
@@ -270,6 +271,12 @@ export const AdminPosView: React.FC<{
         <p role="status" className="qp-notice mb-5">
           Menunggu koneksi database. Pastikan muncul konfirmasi tersimpan
           sebelum menyerahkan struk.
+        </p>
+      )}
+      {invalidOrderIds.length > 0 && (
+        <p role="alert" className="qp-error">
+          Ada {invalidOrderIds.length} pesanan dengan data tidak valid. Hubungi
+          pemilik; daftar dan laporan belum lengkap.
         </p>
       )}
       {tab === 'queue' ? (

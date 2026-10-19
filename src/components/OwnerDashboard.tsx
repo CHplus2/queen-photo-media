@@ -8,6 +8,7 @@ import { Share2, ArrowRight, ClipboardCopy } from 'lucide-react';
 export const OwnerDashboard: React.FC = () => {
   const {
     orders,
+    invalidOrderIds = [],
     isSupervisor,
     inventory,
     inventoryReady,
@@ -83,10 +84,17 @@ export const OwnerDashboard: React.FC = () => {
           terakhir saat koneksi terputus.
         </p>
       )}
+      {invalidOrderIds.length > 0 && (
+        <p role="alert" className="qp-error">
+          {invalidOrderIds.length} data pesanan tidak valid. Angka laporan belum
+          lengkap dan tutup kas dinonaktifkan. Periksa ID ini di Firestore
+          sebelum memperbaiki data: {invalidOrderIds.join(', ')}
+        </p>
+      )}
       <CashClosing
         day={day}
         payments={report.payments}
-        connected={isFirebaseConnected}
+        connected={isFirebaseConnected && invalidOrderIds.length === 0}
       />
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {[

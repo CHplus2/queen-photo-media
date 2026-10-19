@@ -255,7 +255,7 @@ export const InventoryView: React.FC = () => {
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-stone-500" />
             <h3 className="font-bold text-stone-900 text-sm">
-              Riwayat Audit Pemotongan & Pengembalian Bahan Otomatis
+              Riwayat bahan · 250 aktivitas terbaru
             </h3>
           </div>
 

@@ -18,12 +18,20 @@ service cloud.firestore {
         && request.resource.data.orderStatus == 'MENUNGGU_BAYAR'
         && request.resource.data.customerName is string
         && request.resource.data.customerName.size() > 0
+        && request.resource.data.customerName.size() <= 100
+        && request.resource.data.createdAt is string
+        && request.resource.data.createdAt.size() <= 40
+        && !request.resource.data.keys().hasAny(['payments', 'initialPaymentAmount', 'paidAt', 'paymentVerifiedBy', 'recordedBy', 'history', 'materialUsage', 'inventoryWarnings', 'stockExceptionReason', 'cancelledAt', 'cancellationReason'])
         && request.resource.data.customerPhone is string
+        && request.resource.data.customerPhone.size() <= 32
+        && request.resource.data.subtotal is number && request.resource.data.subtotal >= 0
+        && request.resource.data.totalCost is number && request.resource.data.totalCost >= 0
+        && request.resource.data.deliveryFee is number && request.resource.data.deliveryFee >= 0
         && request.resource.data.items is list
         && request.resource.data.items.size() > 0
         && request.resource.data.items.size() <= 50
         && request.resource.data.totalAmount is number
-        && request.resource.data.totalAmount >= 0);
+        && request.resource.data.totalAmount >= 0 && request.resource.data.totalAmount <= 1000000000000);
       allow update: if owner() || (staff()
         && (request.resource.data.get('inventoryStatus', '') != 'COUNTED' || resource.data.get('inventoryStatus', '') == 'COUNTED')
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -34,8 +42,18 @@ service cloud.firestore {
       allow delete: if owner();
     }
     match /customer_surveys/{id} {
-      allow read, update, delete: if staff();
-      allow create: if request.resource.data.satisfactionRating is number
+      allow read, update, delete: if owner();
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.id == id
+        && request.resource.data.createdAt is string
+        && request.resource.data.demandedNewServices is list
+        && request.resource.data.demandedNewServices.size() <= 10
+        && request.resource.data.primaryNeed is string
+        && request.resource.data.primaryNeed.size() <= 200
+        && request.resource.data.get('feedbackText', '') is string
+        && request.resource.data.get('feedbackText', '').size() <= 2000
+        && request.resource.data.satisfactionRating is number
         && request.resource.data.satisfactionRating >= 1
         && request.resource.data.satisfactionRating <= 5;
     }
@@ -68,9 +86,15 @@ service cloud.firestore {
         && (request.resource.data.cashOut == 0 || request.resource.data.note.size() > 0);
       allow update, delete: if owner();
     }
+    match /admins/{id} {
+      allow read, write: if owner();
+    }
+    match /test/{id} {
+      allow read, write: if owner();
+    }
     match /{name}/{id} {
-      allow read: if staff() && name in ['studio_settings', 'admins', 'test'];
-      allow write: if owner() && name in ['studio_settings', 'admins', 'test'];
+      allow read: if staff() && name == 'studio_settings';
+      allow write: if owner() && name == 'studio_settings';
     }
   }
 }
