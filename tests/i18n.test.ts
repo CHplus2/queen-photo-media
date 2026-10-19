@@ -105,3 +105,28 @@ test('optional English catalog and historical names use explicit translations an
   await setLanguage('id');
   assert.equal(orderItemName(item), 'Cetak 10R');
 });
+
+test('existing catalog records without English fields translate names, descriptions and categories', async () => {
+  const { INITIAL_SERVICES } = await import('../src/data/initialData');
+  await setLanguage('en');
+  for (const service of INITIAL_SERVICES) {
+    assert.notEqual(
+      serviceText(service, 'name'),
+      service.name,
+      service.id + ' name',
+    );
+    assert.notEqual(
+      serviceText(service, 'description'),
+      service.description,
+      service.id + ' description',
+    );
+  }
+  const jumbo = INITIAL_SERVICES.find((s) => s.id === 'cetak-10r')!;
+  assert.equal(serviceText(jumbo, 'name'), 'Jumbo 10R Photo Print (20x25 cm)');
+  assert.match(serviceText(jumbo, 'description'), /living room/);
+  assert.equal(tr('Cetak foto'), 'Photo prints');
+  const original = JSON.stringify(jumbo);
+  await setLanguage('id');
+  assert.equal(serviceText(jumbo, 'name'), jumbo.name);
+  assert.equal(JSON.stringify(jumbo), original);
+});

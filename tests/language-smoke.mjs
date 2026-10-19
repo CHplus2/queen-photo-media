@@ -30,6 +30,21 @@ try {
       .getByRole('group', { name: 'Service categories' })
       .getByRole('button', { name: 'Photo prints', exact: true })
       .click();
+    const jumbo = catalog
+      .locator('article')
+      .filter({
+        has: page.getByRole('heading', {
+          name: 'Jumbo 10R Photo Print (20x25 cm)',
+          exact: true,
+        }),
+      });
+    await jumbo.getByText('Photo prints', { exact: true }).waitFor();
+    await jumbo
+      .getByText(/An ideal size for display in your living room/)
+      .waitFor();
+    await catalog.getByRole('searchbox').fill('Jumbo 10R Photo Print');
+    assert.equal(await catalog.locator('article').count(), 1);
+    await catalog.getByRole('searchbox').fill('');
     await catalog
       .getByRole('button', { name: 'Choose a service', exact: true })
       .first()

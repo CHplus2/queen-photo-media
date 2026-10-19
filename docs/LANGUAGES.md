@@ -4,7 +4,7 @@ Indonesian is the default. The “Bahasa / Language” selector applies to custo
 
 Currency remains Indonesian rupiah. Human-readable dates and number formatting follow the language. Business-day accounting still uses Asia/Pontianak (WIB).
 
-In Names & prices, expand the optional English product text section to supply English names, descriptions and units. Missing translations fall back to the original product content. Customer notes, customer names, material names and historical records are not automatically translated. New order lines retain optional English product names as snapshots; changing a catalog name does not rewrite old orders. Size codes, status IDs, frame values and material recipes remain unchanged by translation.
+In Names & prices, expand the optional English product text section to supply English names, descriptions and units. The built-in catalog has English names, descriptions, units and option labels, including existing Firestore records with matching Indonesian text. Explicit English fields override these translations. New or rewritten custom content needs an English entry; otherwise its original text is shown. Customer notes, customer names, material names are not automatically translated. Known catalog names in historical records can display in English without changing the stored record. New order lines retain optional English product names as snapshots; changing a catalog name does not rewrite old orders. Size codes, status IDs, frame values and material recipes remain unchanged by translation.
 
 No new Firebase claim or rules change is needed for the language feature. Previously documented authorization and release checks still apply.
 

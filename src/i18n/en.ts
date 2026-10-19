@@ -1,4 +1,6 @@
+import catalogEnglish from './catalogEnglish';
 const messages: Record<string, string> = {
+  ...catalogEnglish,
   'Konfigurasi kertas belum tersedia. Muat ulang atau hubungi pemilik toko.':
     'Paper configuration is unavailable. Reload or contact the owner.',
   'Isi ukuran lebih dari nol dan biaya tidak negatif.':

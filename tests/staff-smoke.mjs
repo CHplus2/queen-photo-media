@@ -36,7 +36,9 @@ try {
       r.fulfill({ contentType: 'application/javascript', body: fixture }),
     );
     await page.goto('http://127.0.0.1:3000/');
-    await page.getByRole('button', { name: /Cetak 4R Rp/ }).click();
+    await page
+      .getByRole('button', { name: /(?:Cetak 4R|4R print) Rp/ })
+      .click();
     await page.getByRole('button', { name: /Pas foto Rp/ }).click();
     await page
       .getByRole('spinbutton', { name: 'Jumlah', exact: true })
@@ -86,7 +88,9 @@ try {
     assert.equal(sale.customerPhone, '');
     assert.equal(sale.orderStatus, 'SELESAI');
     assert.equal(sale.paymentStatus, 'LUNAS');
-    await page.getByRole('button', { name: /Cetak 4R Rp/ }).click();
+    await page
+      .getByRole('button', { name: /(?:Cetak 4R|4R print) Rp/ })
+      .click();
     await page.getByRole('checkbox', { name: /Dikerjakan/ }).check();
     await page
       .getByRole('textbox', { name: 'Nama pelanggan', exact: true })
@@ -306,7 +310,9 @@ try {
       .waitFor();
     await nav('Cashier');
     await page.getByRole('heading', { name: 'Cashier', exact: true }).waitFor();
-    await page.getByRole('button', { name: /Cetak 4R Rp/ }).click();
+    await page
+      .getByRole('button', { name: /(?:Cetak 4R|4R print) Rp/ })
+      .click();
     await page
       .getByRole('spinbutton', { name: 'Quantity', exact: true })
       .fill('2');

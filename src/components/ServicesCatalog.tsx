@@ -52,7 +52,7 @@ export const ServicesCatalog: React.FC = () => {
     (service) =>
       service.isActive !== false &&
       (category === 'all' || service.category === category) &&
-      `${service.name} ${service.description} ${service.english?.name || ''} ${service.english?.description || ''}`
+      `${service.name} ${service.description} ${serviceText(service, 'name')} ${serviceText(service, 'description')} ${service.english?.name || ''} ${service.english?.description || ''}`
         .toLocaleLowerCase('id')
         .includes(search.trim().toLocaleLowerCase('id')),
   );
@@ -108,7 +108,7 @@ export const ServicesCatalog: React.FC = () => {
         <p role="status" className="text-xs text-stone-500 mb-5">
           {visible.length} {tr('layanan')}
           {category !== 'all'
-            ? ` · ${categories.find((c) => c.id === category)?.label}`
+            ? ` · ${tr(categories.find((c) => c.id === category)?.label || '')}`
             : ''}
         </p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -143,7 +143,7 @@ export const ServicesCatalog: React.FC = () => {
                   ) : null}
                 </div>
                 <span className="qp-eyebrow !text-[10px] mt-5">
-                  {cat?.label}
+                  {tr(cat?.label || '')}
                 </span>
                 <h3 className="text-lg font-semibold leading-snug mt-2">
                   {serviceText(service, 'name')}

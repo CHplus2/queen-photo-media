@@ -1,5 +1,5 @@
 import type { OrderItem, ServiceItem } from '../types';
-import { getLanguage } from './runtime';
+import { getLanguage, tr } from './runtime';
 export function serviceText(
   service: ServiceItem,
   field: 'name' | 'description' | 'unit',
@@ -9,12 +9,12 @@ export function serviceText(
     typeof translated === 'string' &&
     translated.trim()
     ? translated.trim()
-    : service[field];
+    : tr(service[field]);
 }
 export function orderItemName(item: OrderItem): string {
   return getLanguage() === 'en' &&
     typeof item.serviceNameEn === 'string' &&
     item.serviceNameEn
     ? item.serviceNameEn
-    : item.serviceName;
+    : tr(item.serviceName);
 }
