@@ -1,3 +1,5 @@
+import { serviceText } from '../i18n/catalogText';
+import { tr } from '../i18n/runtime';
 import { frameAdjustment } from '../utils/catalogEditing';
 import { ServiceArtwork } from './ServiceArtwork';
 import React, { useEffect, useState } from 'react';
@@ -52,7 +54,7 @@ export const OrderConfiguratorModal: React.FC = () => {
     /[^0-9]/g,
     '',
   );
-  const quoteLink = `https://wa.me/${phone}?text=${encodeURIComponent(`Halo Queen Photo, saya ingin konsultasi ${service.name}. ${notes || 'Mohon konfirmasi harga dan jadwal.'}`)}`;
+  const quoteLink = `https://wa.me/${phone}?text=${encodeURIComponent(`Halo Queen Photo, saya ingin konsultasi ${serviceText(service, 'name')}. ${notes || 'Mohon konfirmasi harga dan jadwal.'}`)}`;
   const add = (event: React.FormEvent) => {
     event.preventDefault();
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999) return;
@@ -60,6 +62,7 @@ export const OrderConfiguratorModal: React.FC = () => {
       id: crypto.randomUUID(),
       serviceId: service.id,
       serviceName: service.name,
+      serviceNameEn: service.english?.name || undefined,
       category: service.category,
       size,
       finish: finish || undefined,
@@ -81,14 +84,16 @@ export const OrderConfiguratorModal: React.FC = () => {
   ) =>
     values?.length ? (
       <label className="block">
-        <span className="qp-label">{label}</span>
+        <span className="qp-label">{tr(label)}</span>
         <select
           className="qp-field"
           value={value}
           onChange={(e) => change(e.target.value)}
         >
           {values.map((option) => (
-            <option key={option}>{option}</option>
+            <option key={option} value={option}>
+              {tr(option)}
+            </option>
           ))}
         </select>
       </label>
@@ -111,14 +116,14 @@ export const OrderConfiguratorModal: React.FC = () => {
       >
         <div className="qp-dialog-header">
           <div>
-            <span className="qp-eyebrow">Sesuaikan pesanan</span>
+            <span className="qp-eyebrow">{tr('Sesuaikan pesanan')}</span>
             <h2 id="configure-title" className="text-2xl leading-tight mt-2">
-              {service.name}
+              {serviceText(service, 'name')}
             </h2>
           </div>
           <button
             className="qp-icon-button shrink-0"
-            aria-label="Tutup pilihan layanan"
+            aria-label={tr('Tutup pilihan layanan')}
             onClick={close}
           >
             <X size={20} />
@@ -134,24 +139,28 @@ export const OrderConfiguratorModal: React.FC = () => {
           className="qp-dialog-content space-y-5"
         >
           <p id="configure-description" className="text-sm text-stone-600">
-            Pilihan standar sudah tersedia. Ubah hanya yang Anda perlukan.
+            {tr(
+              'Pilihan standar sudah tersedia. Ubah hanya yang Anda perlukan.',
+            )}
           </p>
-          {select('Ukuran / paket', service.options?.sizes, size, setSize)}
+          {select(tr('Ukuran / paket'), service.options?.sizes, size, setSize)}
           <div className="grid grid-cols-[1fr_120px] items-end gap-6">
             <div>
               <p className="qp-label">
-                {quote ? 'Harga mulai dari' : 'Harga per paket'}
+                {quote ? tr('Harga mulai dari') : tr('Harga per paket')}
               </p>
               <p className="text-xl font-semibold tabular-nums">
                 {formatRupiah(price)}
               </p>
-              <p className="text-xs text-stone-500 mt-1">{service.unit}</p>
+              <p className="text-xs text-stone-500 mt-1">
+                {tr(serviceText(service, 'unit'))}
+              </p>
             </div>
             <label>
-              <span className="qp-label">Jumlah</span>
+              <span className="qp-label">{tr('Jumlah')}</span>
               <input
                 className="qp-field"
-                aria-label="Jumlah"
+                aria-label={tr('Jumlah')}
                 type="number"
                 min={1}
                 max={999}
@@ -172,20 +181,20 @@ export const OrderConfiguratorModal: React.FC = () => {
             >
               <span className="flex items-center gap-2">
                 <SlidersHorizontal size={16} />
-                Opsi tambahan & catatan (opsional)
+                {tr('Opsi tambahan & catatan (opsional)')}
               </span>
               <ChevronDown size={17} className={expanded ? 'rotate-180' : ''} />
             </button>
             {expanded && (
               <div id="extra-options" className="space-y-4 pt-3 pb-4">
                 {select(
-                  'Finishing',
+                  tr('Finishing'),
                   service.options?.finishes,
                   finish,
                   setFinish,
                 )}
                 {select(
-                  'Bingkai',
+                  tr('Bingkai'),
                   service.options?.frames
                     ? [
                         'Tanpa Bingkai',
@@ -198,26 +207,28 @@ export const OrderConfiguratorModal: React.FC = () => {
                   setFrame,
                 )}
                 {select(
-                  'Warna latar',
+                  tr('Warna latar'),
                   service.options?.backgroundColors,
                   background,
                   setBackground,
                 )}
                 {extra[0] > 0 && (
                   <p className="text-xs text-stone-600">
-                    Tambahan bingkai {formatRupiah(extra[0])} per paket sudah
-                    termasuk pada harga.
+                    {tr('Tambahan bingkai')} {formatRupiah(extra[0])}{' '}
+                    {tr('per paket sudah termasuk pada harga.')}
                   </p>
                 )}
                 <label>
-                  <span className="qp-label">Catatan untuk studio</span>
+                  <span className="qp-label">{tr('Catatan untuk studio')}</span>
                   <textarea
                     className="qp-field"
                     rows={3}
                     value={notes}
                     maxLength={2000}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Contoh: crop fokus wajah, warna natural, atau minta konfirmasi sebelum cetak."
+                    placeholder={tr(
+                      'Contoh: crop fokus wajah, warna natural, atau minta konfirmasi sebelum cetak.',
+                    )}
                   />
                 </label>
               </div>
@@ -227,11 +238,12 @@ export const OrderConfiguratorModal: React.FC = () => {
             <MessageCircle size={19} className="shrink-0 mt-0.5" />
             <div>
               <strong className="block text-sm text-stone-900">
-                Foto dikirim setelah checkout
+                {tr('Foto dikirim setelah checkout')}
               </strong>
               <p className="text-sm mt-1">
-                Kirim foto asli melalui WhatsApp studio. Belum perlu menyiapkan
-                file di langkah ini.
+                {tr(
+                  'Kirim foto asli melalui WhatsApp studio. Belum perlu menyiapkan file di langkah ini.',
+                )}
               </p>
             </div>
           </div>
@@ -242,14 +254,15 @@ export const OrderConfiguratorModal: React.FC = () => {
               rel="noreferrer"
               className="qp-button qp-button-secondary w-full"
             >
-              Konsultasi harga / jadwal{!phone && ' via WhatsApp'}
+              {tr('Konsultasi harga / jadwal')}
+              {!phone && ' via WhatsApp'}
             </a>
           )}
         </form>
         <div className="qp-dialog-footer">
           <div className="flex justify-between gap-4 items-center mb-4">
             <span className="text-sm text-stone-500">
-              {quote ? 'Estimasi total' : 'Total layanan'}
+              {quote ? tr('Estimasi total') : tr('Total layanan')}
             </span>
             <strong className="text-xl tabular-nums">
               {formatRupiah(price * (quantity || 0))}
@@ -264,10 +277,10 @@ export const OrderConfiguratorModal: React.FC = () => {
             className="qp-button w-full"
           >
             <ShoppingBag size={17} />
-            Tambah ke keranjang
+            {tr('Tambah ke keranjang')}
           </button>
           <p className="text-xs text-stone-500 text-center mt-3">
-            Masih bisa menambah layanan lain sebelum checkout.
+            {tr('Masih bisa menambah layanan lain sebelum checkout.')}
           </p>
         </div>
       </section>

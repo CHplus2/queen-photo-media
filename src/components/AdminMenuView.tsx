@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import { CatalogQuickEditor } from './CatalogQuickEditor';
 import { frameAdjustment, frameOptions } from '../utils/catalogEditing';
 import { useDialog } from '../hooks/useDialog';
@@ -80,7 +81,7 @@ export const AdminMenuView: React.FC = () => {
   const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
-      alert('Nama layanan wajib diisi.');
+      alert(tr('Nama layanan wajib diisi.'));
       return;
     }
 
@@ -170,7 +171,7 @@ export const AdminMenuView: React.FC = () => {
       setTimeout(() => setNotificationMsg(''), 5000);
     } catch (err: any) {
       alert(
-        `Gagal menyimpan perubahan: ${err?.message || 'Terjadi kesalahan'}`,
+        tr(`Gagal menyimpan perubahan: ${err?.message || 'Terjadi kesalahan'}`),
       );
     } finally {
       setIsSaving(false);
@@ -181,23 +182,24 @@ export const AdminMenuView: React.FC = () => {
     <div className="qp-container py-8 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <span className="qp-eyebrow">Katalog studio</span>
+          <span className="qp-eyebrow">{tr('Katalog studio')}</span>
           <h1 className="text-3xl !font-sans font-semibold mt-2">
-            Produk & harga
+            {tr('Produk & harga')}
           </h1>
           <p className="text-sm text-stone-600 mt-3">
-            Nama, harga, ukuran, dan bingkai dapat diubah langsung tanpa membuka
-            formulir panjang.
+            {tr(
+              'Nama, harga, ukuran, dan bingkai dapat diubah langsung tanpa membuka formulir panjang.',
+            )}
           </p>
         </div>
         <button className="qp-button" onClick={handleOpenCreateModal}>
           <Plus size={17} />
-          Tambah produk
+          {tr('Tambah produk')}
         </button>
       </div>
       {notificationMsg && (
         <p role="status" className="qp-notice">
-          {notificationMsg}
+          {tr(notificationMsg)}
         </p>
       )}
       <CatalogQuickEditor onDetails={handleOpenEditModal} />
@@ -209,7 +211,7 @@ export const AdminMenuView: React.FC = () => {
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            aria-label="Rincian layanan"
+            aria-label={tr('Rincian layanan')}
             className="qp-dialog !max-w-xl"
           >
             {/* Modal Header */}
@@ -218,12 +220,12 @@ export const AdminMenuView: React.FC = () => {
                 <Layers className="w-4 h-4 text-amber-400" />
                 <h3 className="text-sm font-bold">
                   {editingItem
-                    ? 'Edit Menu Layanan & Harga'
-                    : 'Tambah Menu Layanan Baru'}
+                    ? tr('Edit Menu Layanan & Harga')
+                    : tr('Tambah Menu Layanan Baru')}
                 </h3>
               </div>
               <button
-                aria-label="Tutup rincian layanan"
+                aria-label={tr('Tutup rincian layanan')}
                 onClick={() => setIsModalOpen(false)}
                 className="qp-icon-button text-stone-300 hover:text-stone-100"
               >
@@ -241,7 +243,8 @@ export const AdminMenuView: React.FC = () => {
                   className="block text-stone-800 font-semibold mb-1"
                   htmlFor="adminmenuview-field-1"
                 >
-                  Nama Menu / Layanan <span className="text-rose-500">*</span>:
+                  {tr('Nama Menu / Layanan')}{' '}
+                  <span className="text-rose-500">*</span>:
                 </label>
                 <input
                   id="adminmenuview-field-1"
@@ -249,7 +252,7 @@ export const AdminMenuView: React.FC = () => {
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Contoh: Photostrip 3-Pose Korean Aesthetic"
+                  placeholder={tr('Contoh: Photostrip 3-Pose Korean Aesthetic')}
                   className="w-full border border-stone-300 rounded-xl px-3 py-2 text-stone-900 font-medium focus:outline-none focus:border-amber-600"
                 />
               </div>
@@ -260,7 +263,7 @@ export const AdminMenuView: React.FC = () => {
                     className="block text-stone-800 font-semibold mb-1"
                     htmlFor="adminmenuview-field-2"
                   >
-                    Kategori Layanan:
+                    {tr('Kategori Layanan:')}
                   </label>
                   <select
                     id="adminmenuview-field-2"
@@ -271,14 +274,24 @@ export const AdminMenuView: React.FC = () => {
                     className="w-full border border-stone-300 rounded-xl px-3 py-2 text-stone-900 bg-white font-medium focus:outline-none focus:border-amber-600"
                   >
                     <option value="photostrip_polaroid">
-                      Photostrip & Polaroid (Gen Z)
+                      {tr('Photostrip & Polaroid (Gen Z)')}
                     </option>
-                    <option value="pas_foto">Pas Foto & Aesthetic</option>
-                    <option value="cetak_foto">Cetak Foto & Frame</option>
-                    <option value="foto_studio">Foto Studio Pontianak</option>
-                    <option value="restorasi_edit">Restorasi & Edit</option>
-                    <option value="merchandise">Merchandise & Mug</option>
-                    <option value="banner">Banner & Spanduk</option>
+                    <option value="pas_foto">
+                      {tr('Pas Foto & Aesthetic')}
+                    </option>
+                    <option value="cetak_foto">
+                      {tr('Cetak Foto & Frame')}
+                    </option>
+                    <option value="foto_studio">
+                      {tr('Foto Studio Pontianak')}
+                    </option>
+                    <option value="restorasi_edit">
+                      {tr('Restorasi & Edit')}
+                    </option>
+                    <option value="merchandise">
+                      {tr('Merchandise & Mug')}
+                    </option>
+                    <option value="banner">{tr('Banner & Spanduk')}</option>
                   </select>
                 </div>
 
@@ -287,14 +300,14 @@ export const AdminMenuView: React.FC = () => {
                     className="block text-stone-800 font-semibold mb-1"
                     htmlFor="adminmenuview-field-3"
                   >
-                    Satuan Penjualan:
+                    {tr('Satuan Penjualan:')}
                   </label>
                   <input
                     id="adminmenuview-field-3"
                     type="text"
                     value={formUnit}
                     onChange={(e) => setFormUnit(e.target.value)}
-                    placeholder="Contoh: 2 strip, lembar, paket, pcs"
+                    placeholder={tr('Contoh: 2 strip, lembar, paket, pcs')}
                     className="w-full border border-stone-300 rounded-xl px-3 py-2 text-stone-900 font-medium focus:outline-none focus:border-amber-600"
                   />
                 </div>
@@ -305,14 +318,16 @@ export const AdminMenuView: React.FC = () => {
                   className="block text-stone-800 font-semibold mb-1"
                   htmlFor="adminmenuview-field-4"
                 >
-                  Deskripsi Lengkap (Keunggulan & Kualitas):
+                  {tr('Deskripsi Lengkap (Keunggulan & Kualitas):')}
                 </label>
                 <textarea
                   id="adminmenuview-field-4"
                   rows={2}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Contoh: Cetak foto strip 4-cut aesthetic gaya Korea menggunakan kertas foto minilab asli tahan air puluhan tahun..."
+                  placeholder={tr(
+                    'Contoh: Cetak foto strip 4-cut aesthetic gaya Korea menggunakan kertas foto minilab asli tahan air puluhan tahun...',
+                  )}
                   className="w-full border border-stone-300 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:border-amber-600"
                 />
               </div>
@@ -320,7 +335,7 @@ export const AdminMenuView: React.FC = () => {
               {/* Price & Cost */}
               <div className="p-4 bg-stone-50 rounded-xl border border-stone-200/80 space-y-3">
                 <span className="font-bold text-stone-900 block text-xs">
-                  Penetapan Harga & Biaya Pokok (HPP)
+                  {tr('Penetapan Harga & Biaya Pokok (HPP)')}
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -329,7 +344,7 @@ export const AdminMenuView: React.FC = () => {
                       className="block text-stone-700 font-semibold mb-1"
                       htmlFor="adminmenuview-field-5"
                     >
-                      Harga Jual Konsumen (Rp):
+                      {tr('Harga Jual Konsumen (Rp):')}
                     </label>
                     <input
                       id="adminmenuview-field-5"
@@ -348,7 +363,7 @@ export const AdminMenuView: React.FC = () => {
                       className="block text-stone-700 font-semibold mb-1"
                       htmlFor="adminmenuview-field-6"
                     >
-                      Biaya Pokok Produksi / HPP (Rp):
+                      {tr('Biaya Pokok Produksi / HPP (Rp):')}
                     </label>
                     <input
                       id="adminmenuview-field-6"
@@ -368,7 +383,7 @@ export const AdminMenuView: React.FC = () => {
                 {/* Live Margin Calculation */}
                 <div className="pt-2 border-t border-stone-200 flex items-center justify-between text-xs">
                   <span className="text-stone-600">
-                    Proyeksi Laba Bersih per Unit:
+                    {tr('Proyeksi Laba Bersih per Unit:')}
                   </span>
                   <span className="font-bold text-emerald-700 tabular-nums">
                     +{formatRupiah(formBasePrice - formEstimatedCost)} (
@@ -379,7 +394,7 @@ export const AdminMenuView: React.FC = () => {
                             100,
                         )
                       : 0}
-                    % Margin)
+                    {tr('% Margin)')}
                   </span>
                 </div>
               </div>
@@ -391,7 +406,7 @@ export const AdminMenuView: React.FC = () => {
                     className="block text-stone-800 font-semibold mb-1"
                     htmlFor="adminmenuview-field-7"
                   >
-                    Jenis Bahan / Mesin:
+                    {tr('Jenis Bahan / Mesin:')}
                   </label>
                   <select
                     id="adminmenuview-field-7"
@@ -400,16 +415,16 @@ export const AdminMenuView: React.FC = () => {
                     className="w-full border border-stone-300 rounded-xl px-3 py-2 text-stone-900 bg-white font-medium"
                   >
                     <option value="roll">
-                      Roll Mesin Minilab (Cepat, Presisi)
+                      {tr('Roll Mesin Minilab (Cepat, Presisi)')}
                     </option>
                     <option value="sheet">
-                      Lembaran Sheet / A4 (Pas Foto / Dokumen)
+                      {tr('Lembaran Sheet / A4 (Pas Foto / Dokumen)')}
                     </option>
                     <option value="merchandise">
-                      Bahan Fisik / Merchandise (Mug, Frame)
+                      {tr('Bahan Fisik / Merchandise (Mug, Frame)')}
                     </option>
                     <option value="service">
-                      Jasa / Layanan Studio & Restorasi
+                      {tr('Jasa / Layanan Studio & Restorasi')}
                     </option>
                   </select>
                 </div>
@@ -423,7 +438,7 @@ export const AdminMenuView: React.FC = () => {
                       className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                     />
                     <span className="font-semibold text-stone-800">
-                      Tandai sebagai Produk Populer / Best Seller
+                      {tr('Tandai sebagai Produk Populer / Best Seller')}
                     </span>
                   </label>
                 </div>
@@ -432,7 +447,7 @@ export const AdminMenuView: React.FC = () => {
               {/* Options Configuration */}
               <div className="space-y-3 pt-2 border-t border-stone-200">
                 <span className="font-bold text-stone-800 block">
-                  Konfigurasi Opsi Tambahan (Pisahkan dengan koma):
+                  {tr('Konfigurasi Opsi Tambahan (Pisahkan dengan koma):')}
                 </span>
 
                 <div>
@@ -440,14 +455,14 @@ export const AdminMenuView: React.FC = () => {
                     className="block text-stone-600 text-[11px] font-semibold mb-0.5"
                     htmlFor="adminmenuview-field-8"
                   >
-                    Opsi Ukuran Foto:
+                    {tr('Opsi Ukuran Foto:')}
                   </label>
                   <input
                     id="adminmenuview-field-8"
                     type="text"
                     value={formSizes}
                     onChange={(e) => setFormSizes(e.target.value)}
-                    placeholder="Contoh: 2x6 inch, 4R (10x15cm), 10R, 16R"
+                    placeholder={tr('Contoh: 2x6 inch, 4R (10x15cm), 10R, 16R')}
                     className="w-full border border-stone-300 rounded-xl px-3 py-1.5 text-stone-900 text-xs"
                   />
                 </div>
@@ -457,14 +472,16 @@ export const AdminMenuView: React.FC = () => {
                     className="block text-stone-600 text-[11px] font-semibold mb-0.5"
                     htmlFor="adminmenuview-field-9"
                   >
-                    Opsi Finishing Kertas:
+                    {tr('Opsi Finishing Kertas:')}
                   </label>
                   <input
                     id="adminmenuview-field-9"
                     type="text"
                     value={formFinishes}
                     onChange={(e) => setFormFinishes(e.target.value)}
-                    placeholder="Contoh: Glossy Anti-Luntur, Doff Matte, Silk Luster"
+                    placeholder={tr(
+                      'Contoh: Glossy Anti-Luntur, Doff Matte, Silk Luster',
+                    )}
                     className="w-full border border-stone-300 rounded-xl px-3 py-1.5 text-stone-900 text-xs"
                   />
                 </div>
@@ -474,14 +491,16 @@ export const AdminMenuView: React.FC = () => {
                     className="block text-stone-600 text-[11px] font-semibold mb-0.5"
                     htmlFor="adminmenuview-field-10"
                   >
-                    Opsi Bingkai / Frame:
+                    {tr('Opsi Bingkai / Frame:')}
                   </label>
                   <input
                     id="adminmenuview-field-10"
                     type="text"
                     value={formFrames}
                     onChange={(e) => setFormFrames(e.target.value)}
-                    placeholder="Contoh: Tanpa Bingkai, Minimalis Hitam, Minimalis Putih, Kayu Jati"
+                    placeholder={tr(
+                      'Contoh: Tanpa Bingkai, Minimalis Hitam, Minimalis Putih, Kayu Jati',
+                    )}
                     className="w-full border border-stone-300 rounded-xl px-3 py-1.5 text-stone-900 text-xs"
                   />
                 </div>
@@ -494,7 +513,7 @@ export const AdminMenuView: React.FC = () => {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 border border-stone-300 text-stone-700 rounded-xl font-semibold hover:bg-stone-50"
                 >
-                  Batal
+                  {tr('Batal')}
                 </button>
                 <button
                   type="submit"
@@ -504,11 +523,13 @@ export const AdminMenuView: React.FC = () => {
                   {isSaving ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Menyimpan ke Cloud Firestore...</span>
+                      <span>{tr('Menyimpan ke Cloud Firestore...')}</span>
                     </>
                   ) : (
                     <span>
-                      {editingItem ? 'Simpan Perubahan' : 'Buat Layanan Baru'}
+                      {editingItem
+                        ? tr('Simpan Perubahan')
+                        : tr('Buat Layanan Baru')}
                     </span>
                   )}
                 </button>

@@ -1,3 +1,5 @@
+import { estimateRollYield } from '../utils/printYield';
+import { tr } from '../i18n/runtime';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { formatRupiah } from '../utils/formatters';
@@ -13,9 +15,24 @@ import {
 } from 'lucide-react';
 
 export const CostProfitCalculatorView: React.FC = () => {
+  const { rollConfigs, sheetConfigs } = useStudio();
+  if (!rollConfigs.length || !sheetConfigs.length)
+    return (
+      <div className="qp-container py-8">
+        <p className="qp-notice">
+          {tr(
+            'Konfigurasi kertas belum tersedia. Muat ulang atau hubungi pemilik toko.',
+          )}
+        </p>
+      </div>
+    );
+  return <CalculatorContent />;
+};
+const CalculatorContent: React.FC = () => {
   const { rollConfigs, sheetConfigs, updateRollConfig, updateSheetConfig } =
     useStudio();
 
+  const [saveMessage, setSaveMessage] = useState('');
   // Active calculator mode
   const [activeTab, setActiveTab] = useState<'roll' | 'sheet' | 'simulator'>(
     'roll',
@@ -78,10 +95,12 @@ export const CostProfitCalculatorView: React.FC = () => {
   const batchProfit = batchRevenue - batchHpp;
 
   // Max yield of prints per roll
-  const printsPerRoll =
-    customPrintLengthCm > 0
-      ? Math.floor((rollLength * 100) / customPrintLengthCm)
-      : 0;
+  const printsPerRoll = estimateRollYield(
+    rollWidth,
+    rollLength,
+    customPrintWidthCm,
+    customPrintLengthCm,
+  );
   const totalPotentialProfitPerRoll = printsPerRoll * singleJobProfit;
 
   // Sheet Math
@@ -95,19 +114,23 @@ export const CostProfitCalculatorView: React.FC = () => {
       {/* Header */}
       <div className="space-y-1 pb-6 border-b border-stone-200">
         <p className="text-amber-800 text-xs font-semibold uppercase tracking-wider">
-          Kalkulator HPP & Laba Queen Photo
+          {tr('Kalkulator HPP & Laba Queen Photo')}
         </p>
         <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
-          Kalkulasi Otomatis Laba Kertas Roll vs Lembaran
+          {tr('Kalkulasi Otomatis Laba Kertas Roll vs Lembaran')}
         </h2>
         <p className="text-stone-600 text-xs sm:text-sm max-w-3xl">
-          Menjawab tantangan perhitungan kertas roll Minilab & Plotter: Sistem
-          ini membagi harga 1 gulungan roll ke dalam satuan luas (cm² / m²) dan
-          lembaran cetak secara presisi, sehingga pemilik studio tahu pasti laba
-          bersih setiap pesanan.
+          {tr(
+            'Estimasi biaya bahan dan laba kotor berdasarkan angka yang Anda isi. Belum mencakup seluruh biaya usaha, pajak, atau bahan terbuang.',
+          )}
         </p>
       </div>
 
+      {saveMessage && (
+        <p role="status" className="qp-notice">
+          {tr(saveMessage)}
+        </p>
+      )}
       {/* Tab Switcher */}
       <div className="flex items-center gap-2 border-b border-stone-200 pb-2">
         <button
@@ -118,7 +141,7 @@ export const CostProfitCalculatorView: React.FC = () => {
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
-          1. Kertas Roll (Minilab, Kanvas & Plotter)
+          {tr('1. Kertas Roll (Minilab, Kanvas & Plotter)')}
         </button>
         <button
           onClick={() => setActiveTab('sheet')}
@@ -128,7 +151,7 @@ export const CostProfitCalculatorView: React.FC = () => {
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
-          2. Kertas Lembaran (Sheet 4R / 10R / A4)
+          {tr('2. Kertas Lembaran (Sheet 4R / 10R / A4)')}
         </button>
       </div>
 
@@ -139,10 +162,10 @@ export const CostProfitCalculatorView: React.FC = () => {
           <div className="lg:col-span-6 bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <h3 className="font-bold text-stone-900 text-sm">
-                Spesifikasi & Harga Pembelian Roll
+                {tr('Spesifikasi & Harga Pembelian Roll')}
               </h3>
               <select
-                aria-label="Jenis roll kertas"
+                aria-label={tr('Jenis roll kertas')}
                 value={selectedRollId}
                 onChange={(e) => {
                   setSelectedRollId(e.target.value);
@@ -161,7 +184,7 @@ export const CostProfitCalculatorView: React.FC = () => {
               >
                 {rollConfigs.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.name}
+                    {tr(r.name)}
                   </option>
                 ))}
               </select>
@@ -173,7 +196,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="block text-stone-600 font-medium mb-1"
                   htmlFor="costprofitcalculatorview-field-1"
                 >
-                  Harga Beli 1 Roll (Rp):
+                  {tr('Harga Beli 1 Roll (Rp):')}
                 </label>
                 <input
                   id="costprofitcalculatorview-field-1"
@@ -183,7 +206,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="w-full border border-stone-300 rounded-lg px-3 py-2 tabular-nums font-bold"
                 />
                 <span className="text-[10px] text-stone-500 mt-0.5 block">
-                  Contoh: Rp 420.000 / roll Minilab
+                  {tr('Contoh: Rp 420.000 / roll Minilab')}
                 </span>
               </div>
 
@@ -192,7 +215,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="block text-stone-600 font-medium mb-1"
                   htmlFor="costprofitcalculatorview-field-2"
                 >
-                  Panjang Roll (Meter):
+                  {tr('Panjang Roll (Meter):')}
                 </label>
                 <input
                   id="costprofitcalculatorview-field-2"
@@ -202,7 +225,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="w-full border border-stone-300 rounded-lg px-3 py-2 tabular-nums"
                 />
                 <span className="text-[10px] text-stone-500 mt-0.5 block">
-                  Contoh: 65 meter
+                  {tr('Contoh: 65 meter')}
                 </span>
               </div>
 
@@ -211,7 +234,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="block text-stone-600 font-medium mb-1"
                   htmlFor="costprofitcalculatorview-field-3"
                 >
-                  Lebar Roll (cm):
+                  {tr('Lebar Roll (cm):')}
                 </label>
                 <input
                   id="costprofitcalculatorview-field-3"
@@ -221,7 +244,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="w-full border border-stone-300 rounded-lg px-3 py-2 tabular-nums"
                 />
                 <span className="text-[10px] text-stone-500 mt-0.5 block">
-                  6 inch = 15.2 cm
+                  {tr('6 inch = 15.2 cm')}
                 </span>
               </div>
 
@@ -230,7 +253,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="block text-stone-600 font-medium mb-1"
                   htmlFor="costprofitcalculatorview-field-4"
                 >
-                  Estimasi Tinta per m² (Rp):
+                  {tr('Estimasi Tinta per m² (Rp):')}
                 </label>
                 <input
                   id="costprofitcalculatorview-field-4"
@@ -240,7 +263,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="w-full border border-stone-300 rounded-lg px-3 py-2 tabular-nums"
                 />
                 <span className="text-[10px] text-stone-500 mt-0.5 block">
-                  Tinta kimia/solvent per m²
+                  {tr('Tinta kimia/solvent per m²')}
                 </span>
               </div>
             </div>
@@ -248,7 +271,7 @@ export const CostProfitCalculatorView: React.FC = () => {
             {/* Test Job Config */}
             <div className="pt-4 border-t border-stone-100 space-y-4">
               <h4 className="font-bold text-stone-900 text-xs">
-                Simulasi Ukuran Foto yang Dicetak dari Roll:
+                {tr('Simulasi Ukuran Foto yang Dicetak dari Roll:')}
               </h4>
 
               <div className="grid grid-cols-2 gap-4 text-xs">
@@ -257,7 +280,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                     className="block text-stone-600 font-medium mb-1"
                     htmlFor="costprofitcalculatorview-field-5"
                   >
-                    Lebar Potongan Cetak (cm):
+                    {tr('Lebar Potongan Cetak (cm):')}
                   </label>
                   <input
                     id="costprofitcalculatorview-field-5"
@@ -275,7 +298,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                     className="block text-stone-600 font-medium mb-1"
                     htmlFor="costprofitcalculatorview-field-6"
                   >
-                    Panjang Potongan Cetak (cm):
+                    {tr('Panjang Potongan Cetak (cm):')}
                   </label>
                   <input
                     id="costprofitcalculatorview-field-6"
@@ -293,7 +316,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                     className="block text-stone-600 font-medium mb-1"
                     htmlFor="costprofitcalculatorview-field-7"
                   >
-                    Harga Jual per Lembar (Rp):
+                    {tr('Harga Jual per Lembar (Rp):')}
                   </label>
                   <input
                     id="costprofitcalculatorview-field-7"
@@ -311,7 +334,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                     className="block text-stone-600 font-medium mb-1"
                     htmlFor="costprofitcalculatorview-field-8"
                   >
-                    Jumlah Pesanan (Lembar):
+                    {tr('Jumlah Pesanan (Lembar):')}
                   </label>
                   <input
                     id="costprofitcalculatorview-field-8"
@@ -328,19 +351,40 @@ export const CostProfitCalculatorView: React.FC = () => {
 
             <button
               onClick={() => {
-                updateRollConfig(selectedRollId, {
-                  rollCostIdr: rollCost,
-                  rollLengthMeter: rollLength,
-                  rollWidthCm: rollWidth,
-                  inkCostPerSqMeter: inkCostPerM2,
-                  overheadPerUnit,
-                });
-                alert('Konfigurasi Roll berhasil disimpan ke database lokal!');
+                if (
+                  ![rollCost, inkCostPerM2, overheadPerUnit].every(
+                    (v) => Number.isFinite(v) && v >= 0,
+                  ) ||
+                  ![rollLength, rollWidth].every(
+                    (v) => Number.isFinite(v) && v > 0,
+                  )
+                ) {
+                  setSaveMessage(
+                    'Isi ukuran lebih dari nol dan biaya tidak negatif.',
+                  );
+                  return;
+                }
+                try {
+                  updateRollConfig(selectedRollId, {
+                    rollCostIdr: rollCost,
+                    rollLengthMeter: rollLength,
+                    rollWidthCm: rollWidth,
+                    inkCostPerSqMeter: inkCostPerM2,
+                    overheadPerUnit,
+                  });
+                  setSaveMessage(
+                    'Konfigurasi tersimpan di perangkat ini saja.',
+                  );
+                } catch {
+                  setSaveMessage(
+                    'Gagal menyimpan konfigurasi. Periksa penyimpanan perangkat lalu coba lagi.',
+                  );
+                }
               }}
               className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-stone-100 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               <Save className="w-4 h-4" />
-              <span>Simpan Konfigurasi Roll Ini</span>
+              <span>{tr('Simpan Konfigurasi Roll Ini')}</span>
             </button>
           </div>
 
@@ -350,7 +394,7 @@ export const CostProfitCalculatorView: React.FC = () => {
             <div className="bg-stone-900 text-stone-100 p-6 rounded-2xl border border-stone-800 shadow-md space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wider text-amber-400 font-semibold">
-                  Hasil Perhitungan per Lembar Cetak
+                  {tr('Hasil Perhitungan per Lembar Cetak')}
                 </span>
                 <span className="tabular-nums text-xs bg-stone-800 px-2 py-0.5 rounded text-amber-200">
                   {customPrintWidthCm} x {customPrintLengthCm} cm
@@ -360,7 +404,7 @@ export const CostProfitCalculatorView: React.FC = () => {
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
                   <span className="text-xs text-stone-300 block">
-                    HPP Kertas (dari Roll):
+                    {tr('HPP Kertas (dari Roll):')}
                   </span>
                   <span className="tabular-nums text-base font-bold text-stone-200">
                     {formatRupiah(Math.round(singleJobPaperCost))}
@@ -368,7 +412,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                 </div>
                 <div>
                   <span className="text-xs text-stone-300 block">
-                    Biaya Tinta & Listrik:
+                    {tr('Biaya Tinta & Listrik:')}
                   </span>
                   <span className="tabular-nums text-base font-bold text-stone-200">
                     {formatRupiah(
@@ -381,7 +425,7 @@ export const CostProfitCalculatorView: React.FC = () => {
               <div className="pt-3 border-t border-stone-800 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-stone-300 block">
-                    Total HPP per Lembar:
+                    {tr('Total HPP per Lembar:')}
                   </span>
                   <span className="tabular-nums text-xl font-bold text-rose-300">
                     {formatRupiah(singleJobHpp)}
@@ -389,7 +433,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-stone-300 block">
-                    Laba Bersih per Lembar:
+                    {tr('Estimasi Laba Kotor per Lembar:')}
                   </span>
                   <span className="tabular-nums text-2xl font-bold text-emerald-400">
                     {formatRupiah(singleJobProfit)}
@@ -405,30 +449,40 @@ export const CostProfitCalculatorView: React.FC = () => {
             <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
               <h4 className="font-bold text-stone-900 text-sm flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                <span>Kapasitas Laba dari 1 Gulungan Roll Penuh</span>
+                <span>{tr('Kapasitas Laba dari 1 Gulungan Roll Penuh')}</span>
               </h4>
 
+              <p className="qp-notice">
+                {tr(
+                  'Perkiraan susunan cetak sederhana dengan rotasi. Belum termasuk jarak potong, tepi, dan bahan terbuang; hasil nyata dapat lebih rendah.',
+                )}
+              </p>
               <div className="space-y-3 text-xs text-stone-600">
                 <div className="flex justify-between py-1 border-b border-stone-100">
-                  <span>Panjang roll: {rollLength} meter menghasilkan:</span>
+                  <span>
+                    {tr('Panjang roll:')} {rollLength}{' '}
+                    {tr('meter menghasilkan:')}
+                  </span>
                   <strong className="tabular-nums text-stone-900">
-                    ~{printsPerRoll} lembar foto
+                    ~{printsPerRoll} {tr('lembar foto')}
                   </strong>
                 </div>
                 <div className="flex justify-between py-1 border-b border-stone-100">
-                  <span>Total Omset Potensial jika 1 roll habis terjual:</span>
+                  <span>
+                    {tr('Total Omset Potensial jika 1 roll habis terjual:')}
+                  </span>
                   <strong className="tabular-nums text-stone-900">
                     {formatRupiah(printsPerRoll * customSellingPrice)}
                   </strong>
                 </div>
                 <div className="flex justify-between py-1 border-b border-stone-100">
-                  <span>Total Biaya Modal (Roll + Tinta seluruhnya):</span>
+                  <span>{tr('Estimasi biaya cetak terpakai:')}</span>
                   <strong className="tabular-nums text-rose-600">
                     {formatRupiah(printsPerRoll * singleJobHpp)}
                   </strong>
                 </div>
                 <div className="flex justify-between py-2 text-sm font-bold text-emerald-700 bg-emerald-50 px-3 rounded-lg">
-                  <span>Total Laba Bersih 1 Roll:</span>
+                  <span>{tr('Estimasi Laba Kotor 1 Roll:')}</span>
                   <span className="tabular-nums text-base">
                     {formatRupiah(totalPotentialProfitPerRoll)}
                   </span>
@@ -438,18 +492,19 @@ export const CostProfitCalculatorView: React.FC = () => {
               {/* Batch Order Preview */}
               <div className="p-4 bg-amber-50/60 rounded-xl border border-amber-200/80 text-xs space-y-1">
                 <p className="font-bold text-stone-900">
-                  Ringkasan Pesanan Ini ({customPrintQuantity} Lembar):
+                  {tr('Ringkasan Pesanan Ini (')}
+                  {customPrintQuantity} {tr('Lembar):')}
                 </p>
                 <p className="text-stone-700">
-                  Omset:{' '}
+                  {tr('Omset:')}{' '}
                   <span className="tabular-nums font-bold">
                     {formatRupiah(batchRevenue)}
                   </span>{' '}
-                  · Total HPP:{' '}
+                  {tr('· Total HPP:')}{' '}
                   <span className="tabular-nums font-bold">
                     {formatRupiah(batchHpp)}
                   </span>{' '}
-                  · Laba Bersih Langsung:{' '}
+                  {tr('· Estimasi Laba Kotor:')}{' '}
                   <span className="tabular-nums font-bold text-emerald-800">
                     {formatRupiah(batchProfit)}
                   </span>
@@ -466,10 +521,10 @@ export const CostProfitCalculatorView: React.FC = () => {
           <div className="lg:col-span-6 bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <h3 className="font-bold text-stone-900 text-sm">
-                Perhitungan Kertas Lembaran (Pieces)
+                {tr('Perhitungan Kertas Lembaran (Pieces)')}
               </h3>
               <select
-                aria-label="Jenis kertas lembaran"
+                aria-label={tr('Jenis kertas lembaran')}
                 value={selectedSheetId}
                 onChange={(e) => {
                   setSelectedSheetId(e.target.value);
@@ -486,7 +541,7 @@ export const CostProfitCalculatorView: React.FC = () => {
               >
                 {sheetConfigs.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.sizeName}
+                    {tr(s.sizeName)}
                   </option>
                 ))}
               </select>
@@ -498,7 +553,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="block text-stone-600 font-medium mb-1"
                   htmlFor="costprofitcalculatorview-field-9"
                 >
-                  Harga Beli Kertas per Lembar:
+                  {tr('Harga Beli Kertas per Lembar:')}
                 </label>
                 <input
                   id="costprofitcalculatorview-field-9"
@@ -514,7 +569,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="block text-stone-600 font-medium mb-1"
                   htmlFor="costprofitcalculatorview-field-10"
                 >
-                  Biaya Tinta per Lembar:
+                  {tr('Biaya Tinta per Lembar:')}
                 </label>
                 <input
                   id="costprofitcalculatorview-field-10"
@@ -530,7 +585,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="block text-stone-600 font-medium mb-1"
                   htmlFor="costprofitcalculatorview-field-11"
                 >
-                  Listrik & Kemasan Plastik:
+                  {tr('Listrik & Kemasan Plastik:')}
                 </label>
                 <input
                   id="costprofitcalculatorview-field-11"
@@ -546,7 +601,7 @@ export const CostProfitCalculatorView: React.FC = () => {
                   className="block text-stone-600 font-medium mb-1"
                   htmlFor="costprofitcalculatorview-field-12"
                 >
-                  Harga Jual ke Pelanggan:
+                  {tr('Harga Jual ke Pelanggan:')}
                 </label>
                 <input
                   id="costprofitcalculatorview-field-12"
@@ -560,28 +615,46 @@ export const CostProfitCalculatorView: React.FC = () => {
 
             <button
               onClick={() => {
-                updateSheetConfig(selectedSheetId, {
-                  costPerSheetIdr: sheetPaperCost,
-                  inkCostIdr: sheetInkCost,
-                  overheadIdr: sheetOverhead,
-                });
-                alert('Konfigurasi Lembaran berhasil diperbarui!');
+                if (
+                  ![sheetPaperCost, sheetInkCost, sheetOverhead].every(
+                    (v) => Number.isFinite(v) && v >= 0,
+                  )
+                ) {
+                  setSaveMessage(
+                    'Isi ukuran lebih dari nol dan biaya tidak negatif.',
+                  );
+                  return;
+                }
+                try {
+                  updateSheetConfig(selectedSheetId, {
+                    costPerSheetIdr: sheetPaperCost,
+                    inkCostIdr: sheetInkCost,
+                    overheadIdr: sheetOverhead,
+                  });
+                  setSaveMessage(
+                    'Konfigurasi tersimpan di perangkat ini saja.',
+                  );
+                } catch {
+                  setSaveMessage(
+                    'Gagal menyimpan konfigurasi. Periksa penyimpanan perangkat lalu coba lagi.',
+                  );
+                }
               }}
               className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-stone-100 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               <Save className="w-4 h-4" />
-              <span>Simpan Parameter Kertas Lembaran</span>
+              <span>{tr('Simpan Parameter Kertas Lembaran')}</span>
             </button>
           </div>
 
           <div className="lg:col-span-6 bg-stone-900 text-stone-100 p-6 rounded-2xl border border-stone-800 shadow-md space-y-4">
             <span className="text-xs uppercase tracking-wider text-amber-400 font-semibold">
-              Hasil Margin Kertas Lembaran
+              {tr('Hasil Margin Kertas Lembaran')}
             </span>
             <div className="grid grid-cols-2 gap-4 pt-2">
               <div>
                 <span className="text-xs text-stone-300 block">
-                  Total HPP per Lembar:
+                  {tr('Total HPP per Lembar:')}
                 </span>
                 <span className="tabular-nums text-xl font-bold text-rose-300">
                   {formatRupiah(sheetTotalHpp)}
@@ -589,7 +662,7 @@ export const CostProfitCalculatorView: React.FC = () => {
               </div>
               <div>
                 <span className="text-xs text-stone-300 block">
-                  Laba Bersih per Lembar:
+                  {tr('Estimasi Laba Kotor per Lembar:')}
                 </span>
                 <span className="tabular-nums text-2xl font-bold text-emerald-400">
                   {formatRupiah(sheetProfit)}
@@ -599,12 +672,11 @@ export const CostProfitCalculatorView: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div className="pt-4 border-t border-stone-800 text-xs text-stone-300 leading-relaxed">
-              💡 <em>Contoh:</em> Pas foto resmi kilat dicetak di lembaran A4
-              (bisa memuat hingga 18 pas foto). Dengan modal 1 lembar A4 ~Rp
-              3.200 dan harga paket pas foto Rp 25.000, margin laba bersih
-              studio mencapai <strong>&gt;85%</strong>!
-            </div>
+            <p className="pt-4 border-t border-stone-800 text-xs text-stone-300">
+              {tr(
+                'Gunakan biaya aktual toko. Angka ini estimasi laba kotor, bukan jaminan laba bersih.',
+              )}
+            </p>
           </div>
         </div>
       )}

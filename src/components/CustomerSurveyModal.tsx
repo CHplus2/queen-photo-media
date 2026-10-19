@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { useDialog } from '../hooks/useDialog';
@@ -56,7 +57,7 @@ export const CustomerSurveyModal: React.FC = () => {
   ) => (
     <div>
       <label className="qp-label" htmlFor={id}>
-        {label}
+        {tr(label)}
       </label>
       <select
         className="qp-field"
@@ -66,10 +67,12 @@ export const CustomerSurveyModal: React.FC = () => {
         required
       >
         <option value="" disabled>
-          Pilih jawaban
+          {tr('Pilih jawaban')}
         </option>
         {options.map((option) => (
-          <option key={option}>{option}</option>
+          <option key={option} value={option}>
+            {tr(option)}
+          </option>
         ))}
       </select>
     </div>
@@ -91,15 +94,15 @@ export const CustomerSurveyModal: React.FC = () => {
       >
         <div className="qp-dialog-header">
           <div>
-            <span className="qp-eyebrow">Suara pelanggan</span>
+            <span className="qp-eyebrow">{tr('Suara pelanggan')}</span>
             <h2 id="survey-title" className="text-2xl mt-2">
               {code
-                ? 'Terima kasih atas masukannya.'
-                : 'Bantu studio tumbuh lebih baik.'}
+                ? tr('Terima kasih atas masukannya.')
+                : tr('Bantu studio tumbuh lebih baik.')}
             </h2>
           </div>
           <button
-            aria-label="Tutup survei"
+            aria-label={tr('Tutup survei')}
             disabled={busy}
             className="qp-icon-button"
             onClick={close}
@@ -112,34 +115,34 @@ export const CustomerSurveyModal: React.FC = () => {
             <div className="text-center space-y-5">
               <Check size={36} className="mx-auto" />
               <p className="text-sm text-stone-600">
-                Gunakan kode berikut untuk diskon 10% saat checkout.
+                {tr('Gunakan kode berikut untuk diskon 10% saat checkout.')}
               </p>
               <p className="qp-notice font-mono text-xl text-stone-900">
                 {code}
               </p>
               <button className="qp-button w-full" onClick={close}>
-                Kembali ke website
+                {tr('Kembali ke website')}
               </button>
             </div>
           ) : (
             <form id="survey-form" onSubmit={submit} className="space-y-5">
               <p className="text-sm text-stone-600">
-                Sekitar 2 menit. Jawaban Anda membantu kami memilih layanan yang
-                benar-benar dibutuhkan. Dapatkan kode diskon 10% setelah
-                mengirim.
+                {tr(
+                  'Sekitar 2 menit. Jawaban Anda membantu kami memilih layanan yang benar-benar dibutuhkan. Dapatkan kode diskon 10% setelah mengirim.',
+                )}
               </p>
               <fieldset disabled={busy} className="space-y-5">
-                <legend className="sr-only">Masukan pelanggan</legend>
+                <legend className="sr-only">{tr('Masukan pelanggan')}</legend>
                 {choices(
                   'survey-age',
-                  'Rentang usia',
+                  tr('Rentang usia'),
                   age,
                   (v) => setAge(v as AgeDemographic),
                   ['<20', '20-29', '30-45', '>45'],
                 )}
                 {choices(
                   'survey-need',
-                  'Layanan yang paling Anda butuhkan',
+                  tr('Layanan yang paling Anda butuhkan'),
                   need,
                   setNeed,
                   [
@@ -154,7 +157,7 @@ export const CustomerSurveyModal: React.FC = () => {
                 )}
                 {choices(
                   'survey-frequency',
-                  'Seberapa sering Anda mencetak foto?',
+                  tr('Seberapa sering Anda mencetak foto?'),
                   frequency,
                   setFrequency,
                   [
@@ -166,7 +169,7 @@ export const CustomerSurveyModal: React.FC = () => {
                 )}
                 {choices(
                   'survey-priority',
-                  'Hal yang paling perlu kami tingkatkan',
+                  tr('Hal yang paling perlu kami tingkatkan'),
                   priority,
                   setPriority,
                   [
@@ -180,17 +183,17 @@ export const CustomerSurveyModal: React.FC = () => {
                 )}
                 {choices(
                   'survey-rating',
-                  'Penilaian pengalaman Anda',
+                  tr('Penilaian pengalaman Anda'),
                   rating,
                   setRating,
                   ['1', '2', '3', '4', '5'],
                 )}
                 <p className="text-xs text-stone-500 !mt-1">
-                  1 = sangat kurang, 5 = sangat baik.
+                  {tr('1 = sangat kurang, 5 = sangat baik.')}
                 </p>
                 <div>
                   <label className="qp-label" htmlFor="survey-feedback">
-                    Ide atau masukan lain (opsional)
+                    {tr('Ide atau masukan lain (opsional)')}
                   </label>
                   <textarea
                     id="survey-feedback"
@@ -203,7 +206,7 @@ export const CustomerSurveyModal: React.FC = () => {
                 </div>
                 <div>
                   <label className="qp-label" htmlFor="survey-name">
-                    Nama (opsional)
+                    {tr('Nama (opsional)')}
                   </label>
                   <input
                     id="survey-name"
@@ -217,7 +220,7 @@ export const CustomerSurveyModal: React.FC = () => {
               </fieldset>
               {error && (
                 <p className="qp-error" role="alert">
-                  {error}
+                  {tr(error)}
                 </p>
               )}
             </form>
@@ -234,11 +237,11 @@ export const CustomerSurveyModal: React.FC = () => {
               {busy ? (
                 <>
                   <LoaderCircle size={18} className="animate-spin" />
-                  Mengirim…
+                  {tr('Mengirim…')}
                 </>
               ) : (
                 <>
-                  Kirim masukan <ArrowRight size={17} />
+                  {tr('Kirim masukan')} <ArrowRight size={17} />
                 </>
               )}
             </button>

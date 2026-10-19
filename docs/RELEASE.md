@@ -17,9 +17,9 @@ An online submission is an unpaid request pending staff confirmation, not verifi
 
 Checkout returns success only after Firestore acknowledges the write, preserves the cart on failure, and uses UUID document IDs. Stock is not consumed by unverified online requests. Staff workflows now use shared inventory transactions and a private movement record. Configure measured balances and per-service material usage before relying on deductions; see STAFF_WORKFLOW.md. Unknown usage is flagged rather than guessed. Cancellation replaces deletion to preserve the sales record.
 
-Monthly reports use paid, non-cancelled orders created within the current WIB month. This is a sales-by-order-date view, not cash accounting by payment date. Delivery fees are excluded and discounts allocated proportionately in category totals. Gross profit is estimated before rent, wages and other operating expenses. Refunds, deposits and partial payments need a separate payment-ledger implementation.
+Monthly reports use paid, non-cancelled orders created within the current WIB month. This is a sales-by-order-date view, not cash accounting by payment date. Delivery fees are excluded and discounts allocated proportionately in category totals. Gross profit is estimated before rent, wages and other operating expenses. Deposits and partial payments retain individual receipt records; refunds still require manual review. See STAFF_WORKFLOW.md for payment-day reporting.
 
-Production images are imported through Vite so they are included in builds. The market-strategy page labels hardcoded segment assumptions as unvalidated hypotheses.
+Production images are imported through Vite so they are included in builds. The customer-research page shows actual survey responses and an explicit empty state; it does not infer local demand without data.
 
 ## Validation
 

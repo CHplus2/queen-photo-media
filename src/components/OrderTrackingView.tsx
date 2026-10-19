@@ -1,3 +1,5 @@
+import { orderItemName } from '../i18n/catalogText';
+import { tr } from '../i18n/runtime';
 import React, { useEffect, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import {
@@ -39,11 +41,12 @@ export const OrderTrackingView: React.FC = () => {
   return (
     <div className="qp-container py-12 sm:py-16 max-w-3xl">
       <div className="mb-8">
-        <span className="qp-eyebrow">Kabar dari studio</span>
-        <h1 className="qp-title mt-3">Lacak pesanan Anda.</h1>
+        <span className="qp-eyebrow">{tr('Kabar dari studio')}</span>
+        <h1 className="qp-title mt-3">{tr('Lacak pesanan Anda.')}</h1>
         <p className="text-stone-600 mt-4">
-          Gunakan perangkat yang dipakai saat memesan. Masukkan nomor pesanan
-          untuk melihat perkembangan terbaru.
+          {tr(
+            'Gunakan perangkat yang dipakai saat memesan. Masukkan nomor pesanan untuk melihat perkembangan terbaru.',
+          )}
         </p>
       </div>
       <form
@@ -55,7 +58,7 @@ export const OrderTrackingView: React.FC = () => {
         }}
       >
         <label htmlFor="tracking-id" className="qp-label">
-          Nomor pesanan
+          {tr('Nomor pesanan')}
         </label>
         <div className="flex gap-2">
           <input
@@ -70,17 +73,17 @@ export const OrderTrackingView: React.FC = () => {
           />
           <button type="submit" className="qp-button">
             <Search size={17} />
-            <span className="hidden sm:inline">Lacak</span>
-            <span className="sr-only sm:hidden">Lacak</span>
+            <span className="hidden sm:inline">{tr('Lacak')}</span>
+            <span className="sr-only sm:hidden">{tr('Lacak')}</span>
           </button>
         </div>
         <p className="text-xs text-stone-500 mt-3">
-          Nomor pesanan tersedia pada konfirmasi setelah checkout.
+          {tr('Nomor pesanan tersedia pada konfirmasi setelah checkout.')}
         </p>
         {orders.length > 0 && (
           <div className="mt-5 pt-4 border-t border-stone-200">
             <p className="text-xs text-stone-500 mb-2">
-              Pesanan pada perangkat ini
+              {tr('Pesanan pada perangkat ini')}
             </p>
             <div className="flex flex-wrap gap-2">
               {orders.slice(0, 3).map((o) => (
@@ -106,20 +109,20 @@ export const OrderTrackingView: React.FC = () => {
           <div className="pb-6 border-b border-stone-200">
             <p className="qp-eyebrow">
               {order.orderStatus === 'DIBATALKAN'
-                ? 'Pesanan dibatalkan'
-                : 'Status pesanan'}
+                ? tr('Pesanan dibatalkan')
+                : tr('Status pesanan')}
             </p>
             <h2 className="text-2xl mt-2">
               {order.orderStatus === 'DIBATALKAN'
-                ? 'Pesanan tidak dilanjutkan'
-                : stages[index]?.[1] || 'Sedang diperiksa'}
+                ? tr('Pesanan tidak dilanjutkan')
+                : stages[index]?.[1] || tr('Sedang diperiksa')}
             </h2>
             <p className="text-xs text-stone-500 mt-3 break-all">
               {order.id} · {formatDateTime(order.createdAt)} WIB
             </p>
           </div>
           {order.orderStatus !== 'DIBATALKAN' && (
-            <ol aria-label="Progres pesanan" className="py-6 space-y-5">
+            <ol aria-label={tr('Progres pesanan')} className="py-6 space-y-5">
               {stages.map(([id, title, text], i) => (
                 <li
                   key={id}
@@ -135,10 +138,10 @@ export const OrderTrackingView: React.FC = () => {
                     <p
                       className={`text-sm ${i <= index ? 'font-semibold' : 'text-stone-500'}`}
                     >
-                      {title}
+                      {tr(title)}
                     </p>
                     {i === index && (
-                      <p className="text-xs text-stone-500 mt-1">{text}</p>
+                      <p className="text-xs text-stone-500 mt-1">{tr(text)}</p>
                     )}
                   </div>
                 </li>
@@ -147,24 +150,24 @@ export const OrderTrackingView: React.FC = () => {
           )}
           <dl className="border-t border-stone-200 pt-5 text-sm space-y-3">
             <div className="flex justify-between gap-4">
-              <dt className="text-stone-500">Total pesanan</dt>
+              <dt className="text-stone-500">{tr('Total pesanan')}</dt>
               <dd className="font-semibold">
                 {formatRupiah(order.totalAmount)}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-stone-500">Pembayaran</dt>
+              <dt className="text-stone-500">{tr('Pembayaran')}</dt>
               <dd>
                 {order.paymentStatus === 'LUNAS'
-                  ? 'Lunas'
-                  : 'Menunggu konfirmasi'}
+                  ? tr('Lunas')
+                  : tr('Menunggu konfirmasi')}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-stone-500">Penerimaan</dt>
+              <dt className="text-stone-500">{tr('Penerimaan')}</dt>
               <dd>
                 {order.deliveryMethod === 'AMBIL_STUDIO'
-                  ? 'Ambil di studio'
+                  ? tr('Ambil di studio')
                   : 'Pengiriman'}
               </dd>
             </div>
@@ -173,7 +176,7 @@ export const OrderTrackingView: React.FC = () => {
             {order.items.map((item) => (
               <li key={item.id} className="flex gap-3">
                 <span className="text-stone-500">{item.quantity}×</span>
-                <span>{item.serviceName}</span>
+                <span>{orderItemName(item)}</span>
               </li>
             ))}
           </ul>
@@ -184,7 +187,7 @@ export const OrderTrackingView: React.FC = () => {
             rel="noreferrer"
           >
             <MessageCircle size={18} />
-            Hubungi studio
+            {tr('Hubungi studio')}
             {!import.meta.env.VITE_STUDIO_WHATSAPP && ' via WhatsApp'}
           </a>
         </section>
@@ -197,20 +200,24 @@ export const OrderTrackingView: React.FC = () => {
           />
           <h2 className="text-2xl mt-5">
             {searched
-              ? 'Pesanan belum ditemukan'
-              : 'Kami kabari setiap langkahnya.'}
+              ? tr('Pesanan belum ditemukan')
+              : tr('Kami kabari setiap langkahnya.')}
           </h2>
           <p className="text-sm text-stone-500 max-w-sm mx-auto mt-3">
             {searched
-              ? 'Periksa nomor pesanan dan pastikan Anda memakai perangkat yang sama. Bila memesan langsung di studio, hubungi staf untuk bantuan.'
-              : 'Pesanan Anda akan muncul di sini setelah tersimpan. Belum memesan? Temukan layanan yang sesuai.'}
+              ? tr(
+                  'Periksa nomor pesanan dan pastikan Anda memakai perangkat yang sama. Bila memesan langsung di studio, hubungi staf untuk bantuan.',
+                )
+              : tr(
+                  'Pesanan Anda akan muncul di sini setelah tersimpan. Belum memesan? Temukan layanan yang sesuai.',
+                )}
           </p>
           {!searched && (
             <button
               className="qp-button qp-button-secondary mt-6"
               onClick={() => setCurrentView('layanan')}
             >
-              Lihat layanan
+              {tr('Lihat layanan')}
             </button>
           )}
         </div>

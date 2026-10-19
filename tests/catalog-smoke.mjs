@@ -115,6 +115,38 @@ try {
         [],
       );
     }
+    await page
+      .getByRole('combobox', { name: 'Bahasa / Language' })
+      .selectOption('en');
+    await page
+      .getByRole('button', { name: 'Names & prices', exact: true })
+      .click();
+    await page
+      .getByText('English product text (optional)', { exact: true })
+      .click();
+    await page
+      .getByRole('textbox', { name: 'English product name', exact: true })
+      .fill('8R photo print');
+    await page
+      .getByRole('textbox', { name: 'English description', exact: true })
+      .fill('A photo print for your album');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page
+      .getByRole('status')
+      .filter({ hasText: 'Saved: Cetak 8R.' })
+      .waitFor();
+    assert.equal(
+      await page.evaluate(() => window.__lastPatch.name),
+      'Cetak 8R',
+    );
+    assert.equal(
+      await page.evaluate(() => window.__lastPatch.english.name),
+      '8R photo print',
+    );
+    assert.equal(
+      await page.evaluate(() => window.__lastPatch.english.description),
+      'A photo print for your album',
+    );
     assert.deepEqual(errors, []);
     console.log(
       'PASS ' +

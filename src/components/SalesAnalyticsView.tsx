@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { businessDate, reportableOrders, salesSummary } from '../utils/sales';
@@ -65,7 +66,12 @@ export const SalesAnalyticsView: React.FC = () => {
         '\ufeff' +
           rows
             .map((row) =>
-              row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','),
+              row
+                .map(
+                  (v) =>
+                    `"${String(typeof v === 'string' ? tr(v) : v).replace(/"/g, '""')}"`,
+                )
+                .join(','),
             )
             .join('\r\n'),
       ],
@@ -82,22 +88,23 @@ export const SalesAnalyticsView: React.FC = () => {
     <div className="qp-container py-10 sm:py-12 space-y-7">
       <div className="flex flex-wrap justify-between gap-6 items-end">
         <div>
-          <span className="qp-eyebrow">Performa studio</span>
+          <span className="qp-eyebrow">{tr('Performa studio')}</span>
           <h1 className="text-3xl !font-sans !tracking-tight font-semibold mt-2">
-            Laporan penjualan
+            {tr('Laporan penjualan')}
           </h1>
           <p className="text-sm text-stone-500 mt-3">
-            Pesanan lunas dan tidak dibatalkan, berdasarkan tanggal pesanan
-            (WIB).
+            {tr(
+              'Pesanan lunas dan tidak dibatalkan, berdasarkan tanggal pesanan (WIB).',
+            )}
           </p>
         </div>
         <div className="flex flex-wrap gap-3 items-end">
           <label>
-            <span className="qp-label">Periode laporan</span>
+            <span className="qp-label">{tr('Periode laporan')}</span>
             <input
               className="qp-field"
               type="month"
-              aria-label="Periode laporan"
+              aria-label={tr('Periode laporan')}
               required
               value={month}
               onChange={(e) => {
@@ -110,7 +117,7 @@ export const SalesAnalyticsView: React.FC = () => {
             onClick={exportReport}
           >
             <Download size={17} />
-            Unduh CSV
+            {tr('Unduh CSV')}
           </button>
         </div>
       </div>
@@ -134,11 +141,11 @@ export const SalesAnalyticsView: React.FC = () => {
           ],
         ].map(([title, value, caption]) => (
           <div className="qp-panel p-5 sm:p-6" key={title}>
-            <p className="text-sm text-stone-500">{title}</p>
+            <p className="text-sm text-stone-500">{tr(title)}</p>
             <p className="text-2xl font-semibold tabular-nums mt-3 break-words">
               {value}
             </p>
-            <p className="text-xs text-stone-500 mt-3">{caption}</p>
+            <p className="text-xs text-stone-500 mt-3">{tr(caption)}</p>
           </div>
         ))}
       </div>
@@ -146,8 +153,9 @@ export const SalesAnalyticsView: React.FC = () => {
         <div className="qp-notice flex items-start gap-3">
           <BarChart3 size={21} className="shrink-0" />
           <p>
-            Belum ada pesanan lunas pada periode ini. Pesanan yang belum dibayar
-            atau dibatalkan tidak masuk laporan.
+            {tr(
+              'Belum ada pesanan lunas pada periode ini. Pesanan yang belum dibayar atau dibatalkan tidak masuk laporan.',
+            )}
           </p>
         </div>
       )}
@@ -155,18 +163,20 @@ export const SalesAnalyticsView: React.FC = () => {
         <section className="qp-panel p-6 sm:p-7">
           <div className="flex justify-between gap-4 mb-7">
             <h2 className="!font-sans !tracking-normal text-lg font-semibold">
-              Penjualan per layanan
+              {tr('Penjualan per layanan')}
             </h2>
-            <span className="text-xs text-stone-500">Omzet bersih ongkir</span>
+            <span className="text-xs text-stone-500">
+              {tr('Omzet bersih ongkir')}
+            </span>
           </div>
           <div className="space-y-6">
             {categories.map((c) => (
               <div key={c.label}>
                 <div className="flex justify-between gap-3 text-sm">
                   <span>
-                    {c.label}
+                    {tr(c.label)}
                     <span className="text-xs text-stone-500 ml-2">
-                      {c.count} unit
+                      {c.count} {tr('unit')}
                     </span>
                   </span>
                   <strong className="font-semibold tabular-nums">
@@ -199,7 +209,7 @@ export const SalesAnalyticsView: React.FC = () => {
         <div className="space-y-5">
           <section className="qp-panel p-6 sm:p-7">
             <h2 className="!font-sans !tracking-normal text-lg font-semibold">
-              Saluran penjualan
+              {tr('Saluran penjualan')}
             </h2>
             <dl className="mt-6 space-y-5">
               {(
@@ -215,9 +225,9 @@ export const SalesAnalyticsView: React.FC = () => {
                     className="flex items-start justify-between gap-4"
                   >
                     <dt>
-                      <span className="text-sm font-medium">{label}</span>
+                      <span className="text-sm font-medium">{tr(label)}</span>
                       <span className="text-xs text-stone-500 block mt-1">
-                        {selected.length} pesanan
+                        {selected.length} {tr('pesanan')}
                       </span>
                     </dt>
                     <dd className="text-sm font-semibold tabular-nums">
@@ -230,7 +240,7 @@ export const SalesAnalyticsView: React.FC = () => {
           </section>
           <section className="qp-panel p-6 sm:p-7">
             <h2 className="!font-sans !tracking-normal text-lg font-semibold">
-              Target bulanan
+              {tr('Target bulanan')}
             </h2>
             <p className="text-3xl font-semibold mt-5 tabular-nums">
               {Math.round(targetPct)}
@@ -243,7 +253,7 @@ export const SalesAnalyticsView: React.FC = () => {
               />
             </div>
             <label className="mt-5 block">
-              <span className="qp-label">Target omzet (Rp)</span>
+              <span className="qp-label">{tr('Target omzet (Rp)')}</span>
               <input
                 className="qp-field"
                 type="number"
@@ -261,9 +271,10 @@ export const SalesAnalyticsView: React.FC = () => {
         </div>
       </div>
       <p className="text-xs text-stone-500 leading-relaxed max-w-3xl">
-        Estimasi HPP periode ini: {formatRupiah(summary.cost)}. Laba kotor belum
-        memperhitungkan sewa, gaji, dan biaya operasional lain. Laporan
-        menggunakan tanggal pesanan, bukan tanggal penerimaan pembayaran.
+        {tr('Estimasi HPP periode ini:')} {formatRupiah(summary.cost)}
+        {tr(
+          '. Laba kotor belum memperhitungkan sewa, gaji, dan biaya operasional lain. Laporan menggunakan tanggal pesanan, bukan tanggal penerimaan pembayaran.',
+        )}
       </p>
     </div>
   );

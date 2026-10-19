@@ -1,3 +1,5 @@
+import { orderItemName } from '../i18n/catalogText';
+import { tr } from '../i18n/runtime';
 import React, { useEffect, useRef, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { DeliveryMethod, PaymentMethod, Order } from '../types';
@@ -162,17 +164,17 @@ export const CartDrawer: React.FC = () => {
       >
         <div className="qp-dialog-header">
           <div>
-            <span className="qp-eyebrow">Pesanan Queen Photo</span>
+            <span className="qp-eyebrow">{tr('Pesanan Queen Photo')}</span>
             <h2 id="cart-title" className="text-2xl sm:text-3xl mt-2">
               {completed
-                ? 'Pesanan tersimpan'
+                ? tr('Pesanan tersimpan')
                 : step === 'cart'
-                  ? 'Keranjang Anda'
-                  : 'Rincian pemesanan'}
+                  ? tr('Keranjang Anda')
+                  : tr('Rincian pemesanan')}
             </h2>
           </div>
           <button
-            aria-label="Tutup keranjang"
+            aria-label={tr('Tutup keranjang')}
             disabled={submitting}
             className="qp-icon-button"
             onClick={close}
@@ -182,14 +184,14 @@ export const CartDrawer: React.FC = () => {
         </div>
         {!completed && cart.length > 0 && (
           <ol
-            aria-label="Tahap pemesanan"
+            aria-label={tr('Tahap pemesanan')}
             className="flex gap-6 px-6 py-4 bg-stone-50 border-b border-stone-200 text-sm"
           >
             <li
               className={step === 'cart' ? 'font-semibold' : 'text-stone-500'}
               aria-current={step === 'cart' ? 'step' : undefined}
             >
-              01 <span className="ml-1">Keranjang</span>
+              01 <span className="ml-1">{tr('Keranjang')}</span>
             </li>
             <li
               className={
@@ -209,15 +211,16 @@ export const CartDrawer: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-xl font-semibold">
-                  Satu langkah lagi: hubungi studio.
+                  {tr('Satu langkah lagi: hubungi studio.')}
                 </h3>
                 <p className="text-sm text-stone-600 mt-3">
-                  Kirim foto asli melalui WhatsApp. Staf akan memeriksa rincian,
-                  harga, dan instruksi pembayaran sebelum pesanan diproses.
+                  {tr(
+                    'Kirim foto asli melalui WhatsApp. Staf akan memeriksa rincian, harga, dan instruksi pembayaran sebelum pesanan diproses.',
+                  )}
                 </p>
               </div>
               <div className="qp-notice">
-                <span className="qp-eyebrow">Nomor pesanan</span>
+                <span className="qp-eyebrow">{tr('Nomor pesanan')}</span>
                 <p className="font-mono text-sm break-all mt-2">
                   {completed.id}
                 </p>
@@ -232,22 +235,22 @@ export const CartDrawer: React.FC = () => {
                     }
                   }}
                 >
-                  {copied ? 'Nomor disalin' : 'Salin nomor pesanan'}
+                  {copied ? tr('Nomor disalin') : tr('Salin nomor pesanan')}
                 </button>
                 <span className="sr-only" role="status">
-                  {copied ? 'Nomor pesanan disalin' : ''}
+                  {copied ? tr('Nomor pesanan disalin') : ''}
                 </span>
               </div>
               <dl className="text-sm space-y-3">
                 <div className="flex justify-between gap-4">
-                  <dt className="text-stone-500">Total pesanan</dt>
+                  <dt className="text-stone-500">{tr('Total pesanan')}</dt>
                   <dd className="font-semibold">
                     {formatRupiah(completed.totalAmount)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-stone-500">Pembayaran</dt>
-                  <dd>Menunggu konfirmasi</dd>
+                  <dt className="text-stone-500">{tr('Pembayaran')}</dt>
+                  <dd>{tr('Menunggu konfirmasi')}</dd>
                 </div>
               </dl>
               <a
@@ -258,12 +261,14 @@ export const CartDrawer: React.FC = () => {
               >
                 <MessageCircle size={18} />
                 {import.meta.env.VITE_STUDIO_WHATSAPP
-                  ? 'Kirim foto & konfirmasi'
-                  : 'Bagikan ke WhatsApp studio'}
+                  ? tr('Kirim foto & konfirmasi')
+                  : tr('Bagikan ke WhatsApp studio')}
               </a>
               {!import.meta.env.VITE_STUDIO_WHATSAPP && (
                 <p className="text-xs text-stone-500">
-                  Pilih kontak studio di WhatsApp untuk mengirim rincian ini.
+                  {tr(
+                    'Pilih kontak studio di WhatsApp untuk mengirim rincian ini.',
+                  )}
                 </p>
               )}
               <button
@@ -274,7 +279,7 @@ export const CartDrawer: React.FC = () => {
                   close();
                 }}
               >
-                Lihat status pesanan <ArrowRight size={16} />
+                {tr('Lihat status pesanan')} <ArrowRight size={16} />
               </button>
             </div>
           ) : cart.length === 0 ? (
@@ -285,22 +290,25 @@ export const CartDrawer: React.FC = () => {
                 className="mx-auto text-stone-400"
               />
               <h3 className="text-xl font-semibold mt-6">
-                Mulai dari satu momen.
+                {tr('Mulai dari satu momen.')}
               </h3>
               <p className="text-sm text-stone-500 mt-3 max-w-xs mx-auto">
-                Pilih layanan cetak atau paket foto. Semua pilihan Anda akan
-                tersimpan di sini.
+                {tr(
+                  'Pilih layanan cetak atau paket foto. Semua pilihan Anda akan tersimpan di sini.',
+                )}
               </p>
               <button className="qp-button mt-7" onClick={shop}>
-                Jelajahi layanan <ArrowRight size={16} />
+                {tr('Jelajahi layanan')} <ArrowRight size={16} />
               </button>
             </div>
           ) : step === 'cart' ? (
             <div className="space-y-6">
               <div>
                 <p className="text-sm text-stone-600 mb-5">
-                  {cart.length} layanan dalam satu pesanan. Anda bisa menambah
-                  layanan sebelum checkout.
+                  {cart.length}{' '}
+                  {tr(
+                    'layanan dalam satu pesanan. Anda bisa menambah layanan sebelum checkout.',
+                  )}
                 </p>
                 <ul className="divide-y divide-stone-200">
                   {cart.map((item) => (
@@ -308,7 +316,7 @@ export const CartDrawer: React.FC = () => {
                       <div className="flex justify-between gap-4">
                         <div className="min-w-0">
                           <h3 className="text-sm font-semibold leading-relaxed">
-                            {item.serviceName}
+                            {orderItemName(item)}
                           </h3>
                           <p className="text-xs text-stone-500 mt-1">
                             {[
@@ -322,17 +330,17 @@ export const CartDrawer: React.FC = () => {
                           </p>
                           {item.notes && (
                             <p className="text-xs text-stone-600 mt-2 break-words">
-                              Catatan: {item.notes}
+                              {tr('Catatan:')} {item.notes}
                             </p>
                           )}
                           {item.photoFileName && (
                             <p className="text-xs text-stone-500 mt-2 break-all">
-                              File untuk dikirim: {item.photoFileName}
+                              {tr('File untuk dikirim:')} {item.photoFileName}
                             </p>
                           )}
                         </div>
                         <button
-                          aria-label={`Hapus ${item.serviceName}`}
+                          aria-label={tr(`Hapus ${orderItemName(item)}`)}
                           className="qp-icon-button shrink-0 text-stone-500"
                           onClick={() => removeFromCart(item.id)}
                         >
@@ -344,7 +352,9 @@ export const CartDrawer: React.FC = () => {
                           <button
                             className="qp-icon-button"
                             disabled={item.quantity <= 1}
-                            aria-label={`Kurangi jumlah ${item.serviceName}`}
+                            aria-label={tr(
+                              `Kurangi jumlah ${orderItemName(item)}`,
+                            )}
                             onClick={() =>
                               updateCartItemQuantity(item.id, item.quantity - 1)
                             }
@@ -352,7 +362,7 @@ export const CartDrawer: React.FC = () => {
                             <Minus size={15} />
                           </button>
                           <span
-                            aria-label={`Jumlah ${item.serviceName}`}
+                            aria-label={tr(`Jumlah ${orderItemName(item)}`)}
                             className="min-w-8 text-center text-sm font-semibold"
                           >
                             {item.quantity}
@@ -360,7 +370,9 @@ export const CartDrawer: React.FC = () => {
                           <button
                             className="qp-icon-button"
                             disabled={item.quantity >= 999}
-                            aria-label={`Tambah jumlah ${item.serviceName}`}
+                            aria-label={tr(
+                              `Tambah jumlah ${orderItemName(item)}`,
+                            )}
                             onClick={() =>
                               updateCartItemQuantity(item.id, item.quantity + 1)
                             }
@@ -381,20 +393,20 @@ export const CartDrawer: React.FC = () => {
                 onClick={shop}
               >
                 <Plus size={17} />
-                Tambah layanan lain
+                {tr('Tambah layanan lain')}
               </button>
               <details className="border-t border-stone-200 pt-5">
                 <summary className="text-sm cursor-pointer min-h-11">
-                  Punya kode promo?
+                  {tr('Punya kode promo?')}
                 </summary>
                 <form onSubmit={applyVoucher} className="flex gap-2 mt-3">
                   <label htmlFor="cart-voucher" className="sr-only">
-                    Kode promo
+                    {tr('Kode promo')}
                   </label>
                   <input
                     id="cart-voucher"
                     className="qp-field flex-1 uppercase"
-                    placeholder="Masukkan kode"
+                    placeholder={tr('Masukkan kode')}
                     value={voucher}
                     onChange={(e) => setVoucher(e.target.value)}
                   />
@@ -402,37 +414,38 @@ export const CartDrawer: React.FC = () => {
                     className="qp-button qp-button-secondary"
                     type="submit"
                   >
-                    Terapkan
+                    {tr('Terapkan')}
                   </button>
                 </form>
                 {voucherMessage && (
                   <p role="status" className="text-sm text-stone-600 mt-3">
-                    {voucherMessage}
+                    {tr(voucherMessage)}
                   </p>
                 )}
               </details>
               <div className="qp-notice flex items-start gap-3">
                 <MessageCircle size={18} className="shrink-0 mt-1" />
                 <p>
-                  Foto asli dikirim melalui WhatsApp setelah checkout. Belum ada
-                  pembayaran pada langkah ini.
+                  {tr(
+                    'Foto asli dikirim melalui WhatsApp setelah checkout. Belum ada pembayaran pada langkah ini.',
+                  )}
                 </p>
               </div>
             </div>
           ) : (
             <form id="checkout-form" onSubmit={checkout} className="space-y-7">
               <fieldset disabled={submitting} className="space-y-7">
-                <legend className="sr-only">Informasi pemesanan</legend>
+                <legend className="sr-only">{tr('Informasi pemesanan')}</legend>
                 <section>
                   <h3 className="text-base font-semibold mb-4">
-                    01 · Informasi pemesan
+                    {tr('01 · Informasi pemesan')}
                   </h3>
                   <div className="space-y-4">
                     <div>
                       <label className="qp-label" htmlFor="customer-name">
-                        Nama lengkap{' '}
+                        {tr('Nama lengkap')}{' '}
                         <span className="text-stone-500 font-normal">
-                          (wajib)
+                          {tr('(wajib)')}
                         </span>
                       </label>
                       <input
@@ -443,14 +456,14 @@ export const CartDrawer: React.FC = () => {
                         maxLength={100}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Nama Anda"
+                        placeholder={tr('Nama Anda')}
                       />
                     </div>
                     <div>
                       <label className="qp-label" htmlFor="customer-phone">
-                        Nomor WhatsApp{' '}
+                        {tr('Nomor WhatsApp')}{' '}
                         <span className="text-stone-500 font-normal">
-                          (wajib)
+                          {tr('(wajib)')}
                         </span>
                       </label>
                       <input
@@ -465,14 +478,14 @@ export const CartDrawer: React.FC = () => {
                         placeholder="0812xxxxxxxx"
                       />
                       <p className="text-xs text-stone-500 mt-2">
-                        Untuk konfirmasi rincian dan kabar pesanan.
+                        {tr('Untuk konfirmasi rincian dan kabar pesanan.')}
                       </p>
                     </div>
                   </div>
                 </section>
                 <fieldset>
                   <legend className="text-base font-semibold mb-4">
-                    02 · Terima pesanan
+                    {tr('02 · Terima pesanan')}
                   </legend>
                   <div className="grid sm:grid-cols-2 gap-3">
                     {(
@@ -504,9 +517,9 @@ export const CartDrawer: React.FC = () => {
                         />
                         <span>
                           <Icon size={17} className="mb-2" />
-                          <strong className="text-sm block">{title}</strong>
+                          <strong className="text-sm block">{tr(title)}</strong>
                           <span className="text-xs text-stone-500 block mt-1">
-                            {desc}
+                            {tr(desc)}
                           </span>
                         </span>
                       </label>
@@ -514,14 +527,15 @@ export const CartDrawer: React.FC = () => {
                   </div>
                   {delivery === 'AMBIL_STUDIO' ? (
                     <p className="text-xs text-stone-500 mt-3">
-                      Jl. Gajah Mada No. 128, Pontianak. Tunggu konfirmasi
-                      sebelum datang.
+                      {tr(
+                        'Jl. Gajah Mada No. 128, Pontianak. Tunggu konfirmasi sebelum datang.',
+                      )}
                     </p>
                   ) : (
                     <div className="space-y-4 mt-4">
                       <div>
                         <label htmlFor="customer-district" className="qp-label">
-                          Kecamatan tujuan
+                          {tr('Kecamatan tujuan')}
                         </label>
                         <select
                           id="customer-district"
@@ -535,13 +549,15 @@ export const CartDrawer: React.FC = () => {
                           }}
                         >
                           {PONTIANAK_DISTRICTS.map((d) => (
-                            <option key={d.name}>{d.name}</option>
+                            <option key={d.name} value={d.name}>
+                              {tr(d.name)}
+                            </option>
                           ))}
                         </select>
                       </div>
                       <div>
                         <label htmlFor="customer-address" className="qp-label">
-                          Alamat lengkap & patokan
+                          {tr('Alamat lengkap & patokan')}
                         </label>
                         <textarea
                           id="customer-address"
@@ -550,21 +566,23 @@ export const CartDrawer: React.FC = () => {
                           required
                           rows={3}
                           maxLength={1000}
-                          placeholder="Nama jalan, nomor rumah, dan patokan"
+                          placeholder={tr(
+                            'Nama jalan, nomor rumah, dan patokan',
+                          )}
                           value={address}
                           onChange={(e) => setAddress(e.target.value)}
                         />
                       </div>
                       <p className="text-xs text-stone-500">
-                        Estimasi ongkir {formatRupiah(deliveryFee)}. Staf
-                        mengonfirmasi ketersediaan pengiriman.
+                        {tr('Estimasi ongkir')} {formatRupiah(deliveryFee)}
+                        {tr('. Staf mengonfirmasi ketersediaan pengiriman.')}
                       </p>
                     </div>
                   )}
                 </fieldset>
                 <fieldset>
                   <legend className="text-base font-semibold mb-4">
-                    03 · Rencana pembayaran
+                    {tr('03 · Rencana pembayaran')}
                   </legend>
                   <div className="space-y-2">
                     {(
@@ -584,22 +602,23 @@ export const CartDrawer: React.FC = () => {
                           checked={payment === id}
                           onChange={() => setPayment(id)}
                         />
-                        {label}
+                        {tr(label)}
                       </label>
                     ))}
                   </div>
                   <p className="qp-notice mt-4 flex gap-3">
                     <ShieldCheck size={20} className="shrink-0" />
                     <span>
-                      Belum perlu transfer. Staf akan mengonfirmasi harga dan
-                      mengirim instruksi pembayaran resmi.
+                      {tr(
+                        'Belum perlu transfer. Staf akan mengonfirmasi harga dan mengirim instruksi pembayaran resmi.',
+                      )}
                     </span>
                   </p>
                 </fieldset>
               </fieldset>
               {error && (
                 <p role="alert" className="qp-error">
-                  {error}
+                  {tr(error)}
                 </p>
               )}
             </form>
@@ -609,7 +628,9 @@ export const CartDrawer: React.FC = () => {
           <div className="qp-dialog-footer space-y-4">
             {step === 'details' && (
               <div className="hidden lg:block border-b border-stone-200 pb-5 mb-5">
-                <h3 className="text-lg font-semibold">Ringkasan pesanan</h3>
+                <h3 className="text-lg font-semibold">
+                  {tr('Ringkasan pesanan')}
+                </h3>
                 <ul className="mt-5 space-y-4">
                   {cart.map((item) => (
                     <li
@@ -618,7 +639,7 @@ export const CartDrawer: React.FC = () => {
                     >
                       <div className="min-w-0">
                         <strong className="font-medium">
-                          {item.quantity}× {item.serviceName}
+                          {item.quantity}× {orderItemName(item)}
                         </strong>
                         <p className="text-xs text-stone-500 mt-1">
                           {[item.size, item.frame].filter(Boolean).join(' · ')}
@@ -635,12 +656,12 @@ export const CartDrawer: React.FC = () => {
 
             <dl className="text-sm space-y-2">
               <div className="flex justify-between">
-                <dt className="text-stone-500">Subtotal layanan</dt>
+                <dt className="text-stone-500">{tr('Subtotal layanan')}</dt>
                 <dd>{formatRupiah(subtotal)}</dd>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between">
-                  <dt className="text-stone-500">Diskon 10%</dt>
+                  <dt className="text-stone-500">{tr('Diskon 10%')}</dt>
                   <dd>−{formatRupiah(discountAmount)}</dd>
                 </div>
               )}
@@ -648,8 +669,8 @@ export const CartDrawer: React.FC = () => {
                 <div className="flex justify-between">
                   <dt className="text-stone-500">
                     {delivery === 'AMBIL_STUDIO'
-                      ? 'Ambil di studio'
-                      : 'Estimasi pengiriman'}
+                      ? tr('Ambil di studio')
+                      : tr('Estimasi pengiriman')}
                   </dt>
                   <dd>
                     {deliveryFee === 0 ? 'Gratis' : formatRupiah(deliveryFee)}
@@ -657,7 +678,9 @@ export const CartDrawer: React.FC = () => {
                 </div>
               )}
               <div className="flex justify-between font-semibold text-lg pt-2">
-                <dt>{step === 'cart' ? 'Total layanan' : 'Total pesanan'}</dt>
+                <dt>
+                  {step === 'cart' ? tr('Total layanan') : tr('Total pesanan')}
+                </dt>
                 <dd className="tabular-nums">
                   {formatRupiah(
                     step === 'cart' ? subtotal - discountAmount : total,
@@ -670,7 +693,7 @@ export const CartDrawer: React.FC = () => {
                 className="qp-button w-full"
                 onClick={() => setStep('details')}
               >
-                Lanjut ke checkout <ArrowRight size={17} />
+                {tr('Lanjut ke checkout')} <ArrowRight size={17} />
               </button>
             ) : (
               <div className="flex gap-2">
@@ -678,7 +701,7 @@ export const CartDrawer: React.FC = () => {
                   className="qp-button qp-button-secondary"
                   disabled={submitting}
                   onClick={() => setStep('cart')}
-                  aria-label="Kembali ke keranjang"
+                  aria-label={tr('Kembali ke keranjang')}
                 >
                   <ArrowLeft size={18} />
                 </button>
@@ -691,11 +714,11 @@ export const CartDrawer: React.FC = () => {
                   {submitting ? (
                     <>
                       <LoaderCircle className="animate-spin" size={18} />
-                      Menyimpan…
+                      {tr('Menyimpan…')}
                     </>
                   ) : (
                     <>
-                      Kirim pesanan <ArrowRight size={17} />
+                      {tr('Kirim pesanan')} <ArrowRight size={17} />
                     </>
                   )}
                 </button>
@@ -703,8 +726,8 @@ export const CartDrawer: React.FC = () => {
             )}
             <p className="text-xs text-center text-stone-500">
               {step === 'cart'
-                ? 'Ongkir ditampilkan setelah memilih pengiriman.'
-                : 'Pesanan diproses setelah konfirmasi staf.'}
+                ? tr('Ongkir ditampilkan setelah memilih pengiriman.')
+                : tr('Pesanan diproses setelah konfirmasi staf.')}
             </p>
           </div>
         )}

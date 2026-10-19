@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import React, { useEffect, useRef, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import type { ServiceItem } from '../types';
@@ -26,7 +27,13 @@ export function CatalogQuickEditor({
   const [tab, setTab] = useState<Tab>('product');
   const [notice, setNotice] = useState('');
   const visible = services.filter((s) =>
-    [s.name, s.unit, ...(s.options?.sizes || []), ...(s.options?.frames || [])]
+    [
+      s.name,
+      s.english?.name || '',
+      s.unit,
+      ...(s.options?.sizes || []),
+      ...(s.options?.frames || []),
+    ]
       .join(' ')
       .toLowerCase()
       .includes(search.trim().toLowerCase()),
@@ -34,18 +41,20 @@ export function CatalogQuickEditor({
   return (
     <section className="space-y-4">
       <label className="block">
-        <span className="qp-label">Cari nama produk, ukuran, atau bingkai</span>
+        <span className="qp-label">
+          {tr('Cari nama produk, ukuran, atau bingkai')}
+        </span>
         <input
           type="search"
           className="qp-field"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Contoh: 10R"
+          placeholder={tr('Contoh: 10R')}
         />
       </label>
       <div
         role="group"
-        aria-label="Bagian yang diubah"
+        aria-label={tr('Bagian yang diubah')}
         className="flex gap-2 flex-wrap"
       >
         {(
@@ -61,18 +70,18 @@ export function CatalogQuickEditor({
             aria-pressed={tab === id}
             onClick={() => setTab(id)}
           >
-            {label}
+            {tr(label)}
           </button>
         ))}
       </div>
       <p className="text-sm text-stone-600">
-        Ubah langsung di bawah, lalu tekan Enter atau Simpan pada produk
-        tersebut. Perubahan berlaku untuk transaksi baru; riwayat penjualan
-        tetap memakai data saat transaksi dibuat.
+        {tr(
+          'Ubah langsung di bawah, lalu tekan Enter atau Simpan pada produk tersebut. Perubahan berlaku untuk transaksi baru; riwayat penjualan tetap memakai data saat transaksi dibuat.',
+        )}
       </p>
       {notice && (
         <p role="status" className="qp-notice">
-          {notice}
+          {tr(notice)}
         </p>
       )}
       {visible.map((service) => (
@@ -85,7 +94,7 @@ export function CatalogQuickEditor({
         />
       ))}
       {!visible.length && (
-        <p className="qp-notice">Tidak ada produk yang cocok.</p>
+        <p className="qp-notice">{tr('Tidak ada produk yang cocok.')}</p>
       )}
     </section>
   );
@@ -104,6 +113,9 @@ function CatalogRow({
   const { updateService } = useStudio();
   const snapshot = () => ({
     name: service.name,
+    englishName: service.english?.name || '',
+    englishDescription: service.english?.description || '',
+    englishUnit: service.english?.unit || '',
     price: String(service.basePrice),
     unit: service.unit,
     category: service.category,
@@ -158,7 +170,7 @@ function CatalogRow({
   };
   return (
     <form
-      aria-label={`Ubah ${service.name}`}
+      aria-label={tr(`Ubah ${service.name}`)}
       className="qp-panel p-4 sm:p-5 space-y-4"
       onSubmit={async (e) => {
         e.preventDefault();
@@ -179,6 +191,11 @@ function CatalogRow({
           options.sizes = sizes;
           const patch: Partial<ServiceItem> = {
             name: draft.name.trim(),
+            english: {
+              name: draft.englishName.trim(),
+              description: draft.englishDescription.trim(),
+              unit: draft.englishUnit.trim(),
+            },
             basePrice: Number(draft.price),
             unit: draft.unit.trim() || 'paket',
             category: draft.category,
@@ -213,8 +230,8 @@ function CatalogRow({
           <h2 className="!font-sans text-lg font-semibold">{service.name}</h2>
           <p className="text-xs text-stone-500 mt-1">
             {service.isActive === false
-              ? 'Disembunyikan'
-              : 'Tampil di kasir & website'}
+              ? tr('Disembunyikan')
+              : tr('Tampil di kasir & website')}
           </p>
         </div>
         <button
@@ -223,12 +240,12 @@ function CatalogRow({
           disabled={busy || dirty}
           title={
             dirty
-              ? 'Simpan atau batalkan perubahan sebelum membuka detail.'
+              ? tr('Simpan atau batalkan perubahan sebelum membuka detail.')
               : undefined
           }
           onClick={onDetails}
         >
-          Detail lainnya
+          {tr('Detail lainnya')}
         </button>
       </div>
       <fieldset disabled={busy} className="space-y-4 min-w-0">
@@ -236,7 +253,7 @@ function CatalogRow({
           <>
             <div className="grid sm:grid-cols-2 gap-4">
               <label>
-                <span className="qp-label">Nama produk</span>
+                <span className="qp-label">{tr('Nama produk')}</span>
                 <input
                   className="qp-field"
                   required
@@ -246,7 +263,7 @@ function CatalogRow({
                 />
               </label>
               <label>
-                <span className="qp-label">Harga jual (Rp)</span>
+                <span className="qp-label">{tr('Harga jual (Rp)')}</span>
                 <input
                   className="qp-field"
                   type="number"
@@ -258,7 +275,7 @@ function CatalogRow({
                 />
               </label>
               <label>
-                <span className="qp-label">Satuan penjualan</span>
+                <span className="qp-label">{tr('Satuan penjualan')}</span>
                 <input
                   className="qp-field"
                   required
@@ -268,7 +285,7 @@ function CatalogRow({
                 />
               </label>
               <label>
-                <span className="qp-label">Kelompok produk</span>
+                <span className="qp-label">{tr('Kelompok produk')}</span>
                 <select
                   className="qp-field"
                   value={draft.category}
@@ -280,14 +297,14 @@ function CatalogRow({
                 >
                   {categories.map(([id, name]) => (
                     <option key={id} value={id}>
-                      {name}
+                      {tr(name)}
                     </option>
                   ))}
                 </select>
               </label>
               {draft.sizes.length === 1 && (
                 <label>
-                  <span className="qp-label">Ukuran foto</span>
+                  <span className="qp-label">{tr('Ukuran foto')}</span>
                   <input
                     className="qp-field"
                     required
@@ -304,19 +321,54 @@ function CatalogRow({
                 checked={draft.active}
                 onChange={(e) => change({ active: e.target.checked })}
               />
-              Tampilkan produk di kasir & website
+              {tr('Tampilkan produk di kasir & website')}
             </label>
           </>
+        )}
+        {tab === 'product' && (
+          <details>
+            <summary className="text-sm cursor-pointer py-2">
+              {tr('Teks produk bahasa Inggris (opsional)')}
+            </summary>
+            <p className="text-xs text-stone-600 my-3">
+              {tr(
+                'Kosongkan untuk memakai teks asli. Catatan pelanggan tidak diterjemahkan otomatis.',
+              )}
+            </p>
+            <div className="space-y-3">
+              {(
+                [
+                  ['englishName', 'Nama produk bahasa Inggris'],
+                  ['englishDescription', 'Deskripsi bahasa Inggris'],
+                  ['englishUnit', 'Satuan bahasa Inggris'],
+                ] as const
+              ).map(([field, label]) => (
+                <label className="block" key={field}>
+                  <span className="qp-label">{tr(label)}</span>
+                  <input
+                    className="qp-field"
+                    maxLength={field === 'englishDescription' ? 2000 : 150}
+                    value={draft[field]}
+                    onChange={(e) => change({ [field]: e.target.value })}
+                  />
+                </label>
+              ))}
+            </div>
+          </details>
         )}
         {tab === 'sizes' && (
           <>
             <p className="text-sm text-stone-600">
-              Satu ukuran per baris. Baris pertama menjadi pilihan standar.
+              {tr(
+                'Satu ukuran per baris. Baris pertama menjadi pilihan standar.',
+              )}
             </p>
             {draft.sizes.map((size, index) => (
               <div className="flex gap-2" key={index}>
                 <label className="flex-1">
-                  <span className="qp-label">Ukuran {index + 1}</span>
+                  <span className="qp-label">
+                    {tr('Ukuran')} {index + 1}
+                  </span>
                   <input
                     className="qp-field"
                     required
@@ -334,12 +386,12 @@ function CatalogRow({
                 <button
                   type="button"
                   className="qp-button qp-button-secondary self-end !px-3"
-                  aria-label={`Hapus ukuran ${index + 1}`}
+                  aria-label={tr(`Hapus ukuran ${index + 1}`)}
                   onClick={() =>
                     change({ sizes: draft.sizes.filter((_, i) => i !== index) })
                   }
                 >
-                  Hapus
+                  {tr('Hapus')}
                 </button>
               </div>
             ))}
@@ -348,15 +400,16 @@ function CatalogRow({
               className="qp-button qp-button-secondary"
               onClick={() => change({ sizes: [...draft.sizes, ''] })}
             >
-              Tambah ukuran
+              {tr('Tambah ukuran')}
             </button>
           </>
         )}
         {tab === 'frames' && (
           <>
             <p className="text-sm text-stone-600">
-              Harga di sini adalah tambahan di atas harga produk. Mengubah nama
-              mempertahankan nominalnya.
+              {tr(
+                'Harga di sini adalah tambahan di atas harga produk. Mengubah nama mempertahankan nominalnya.',
+              )}
             </p>
             {draft.frames.map((frame, index) => (
               <div
@@ -364,7 +417,9 @@ function CatalogRow({
                 className="border border-stone-200 rounded-xl p-3 space-y-3"
               >
                 <label className="block">
-                  <span className="qp-label">Nama bingkai {index + 1}</span>
+                  <span className="qp-label">
+                    {tr('Nama bingkai')} {index + 1}
+                  </span>
                   <input
                     className="qp-field"
                     required
@@ -384,8 +439,10 @@ function CatalogRow({
                   {(['price', 'cost'] as const).map((key) => (
                     <label key={key}>
                       <span className="qp-label">
-                        {key === 'price' ? 'Tambahan harga' : 'Biaya bahan'}{' '}
-                        bingkai {index + 1} (Rp)
+                        {key === 'price'
+                          ? tr('Tambahan harga')
+                          : tr('Biaya bahan')}{' '}
+                        {tr('bingkai')} {index + 1} (Rp)
                       </span>
                       <input
                         type="number"
@@ -412,14 +469,14 @@ function CatalogRow({
                   type="button"
                   className="text-sm underline min-h-11"
                   disabled={frame.name === 'Tanpa Bingkai'}
-                  aria-label={`Hapus bingkai ${index + 1}`}
+                  aria-label={tr(`Hapus bingkai ${index + 1}`)}
                   onClick={() =>
                     change({
                       frames: draft.frames.filter((_, i) => i !== index),
                     })
                   }
                 >
-                  Hapus bingkai
+                  {tr('Hapus bingkai')}
                 </button>
               </div>
             ))}
@@ -432,15 +489,16 @@ function CatalogRow({
                 })
               }
             >
-              Tambah bingkai
+              {tr('Tambah bingkai')}
             </button>
           </>
         )}
         {sizesChanged && service.stockMode === 'automatic' && (
           <div className="qp-notice text-sm">
             <p>
-              Ukuran berbeda dapat memakai jumlah bahan berbeda. Pemotongan
-              otomatis akan menunggu pemeriksaan di Inventaris.
+              {tr(
+                'Ukuran berbeda dapat memakai jumlah bahan berbeda. Pemotongan otomatis akan menunggu pemeriksaan di Inventaris.',
+              )}
             </p>
             <label className="flex gap-3 mt-3">
               <input
@@ -448,24 +506,26 @@ function CatalogRow({
                 checked={labelOnly}
                 onChange={(e) => setLabelOnly(e.target.checked)}
               />
-              Hanya koreksi tulisan; ukuran fisik dan pemakaian bahan tetap
-              sama.
+              {tr(
+                'Hanya koreksi tulisan; ukuran fisik dan pemakaian bahan tetap sama.',
+              )}
             </label>
           </div>
         )}
         {conflict && (
           <div role="alert" className="qp-error">
-            Produk ini berubah di perangkat lain. Salin isian Anda jika perlu,
-            lalu{' '}
+            {tr(
+              'Produk ini berubah di perangkat lain. Salin isian Anda jika perlu, lalu',
+            )}{' '}
             <button type="button" className="underline" onClick={reset}>
-              muat data terbaru
+              {tr('muat data terbaru')}
             </button>{' '}
-            sebelum menyimpan.
+            {tr('sebelum menyimpan.')}
           </div>
         )}
         {error && (
           <p role="alert" className="qp-error">
-            {error}
+            {tr(error)}
           </p>
         )}
         {dirty && (
@@ -475,7 +535,7 @@ function CatalogRow({
               type="submit"
               disabled={busy || conflict}
             >
-              {busy ? 'Menyimpan…' : 'Simpan'}
+              {busy ? tr('Menyimpan…') : tr('Simpan')}
             </button>
             <button
               className="qp-button qp-button-secondary"
@@ -483,7 +543,7 @@ function CatalogRow({
               disabled={busy}
               onClick={reset}
             >
-              Batalkan
+              {tr('Batalkan')}
             </button>
           </div>
         )}

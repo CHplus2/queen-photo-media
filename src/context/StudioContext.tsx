@@ -540,6 +540,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
       id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       serviceId: service.id,
       serviceName: service.name,
+      serviceNameEn: service.english?.name || undefined,
       category: service.category,
       size: defaultSize,
       finish: defaultFinish,
@@ -747,26 +748,22 @@ export const StudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // UPDATE CONFIGS
   const updateRollConfig = (id: string, updated: Partial<RollPaperConfig>) => {
-    setRollConfigs((prev) => {
-      const next = prev.map((cfg) =>
-        cfg.id === id ? { ...cfg, ...updated } : cfg,
-      );
-      localStorage.setItem('queen_photo_roll_configs', JSON.stringify(next));
-      return next;
-    });
+    const next = rollConfigs.map((cfg) =>
+      cfg.id === id ? { ...cfg, ...updated } : cfg,
+    );
+    localStorage.setItem('queen_photo_roll_configs', JSON.stringify(next));
+    setRollConfigs(next);
   };
 
   const updateSheetConfig = (
     id: string,
     updated: Partial<SheetPaperConfig>,
   ) => {
-    setSheetConfigs((prev) => {
-      const next = prev.map((cfg) =>
-        cfg.id === id ? { ...cfg, ...updated } : cfg,
-      );
-      localStorage.setItem('queen_photo_sheet_configs', JSON.stringify(next));
-      return next;
-    });
+    const next = sheetConfigs.map((cfg) =>
+      cfg.id === id ? { ...cfg, ...updated } : cfg,
+    );
+    localStorage.setItem('queen_photo_sheet_configs', JSON.stringify(next));
+    setSheetConfigs(next);
   };
 
   const openOrderWithService = (service: ServiceItem) => {

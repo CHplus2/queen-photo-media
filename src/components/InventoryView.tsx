@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import { MaterialSetup } from './MaterialSetup';
 import { useDialog } from '../hooks/useDialog';
 import React, { useState } from 'react';
@@ -93,15 +94,15 @@ export const InventoryView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
           <p className="text-amber-800 text-xs font-semibold uppercase tracking-wider">
-            Sistem Inventaris Bahan & Kertas Queen Photo
+            {tr('Sistem Inventaris Bahan & Kertas Queen Photo')}
           </p>
           <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 mt-1">
-            Manajemen Stok Kertas Roll, Lembaran & Merchandise
+            {tr('Manajemen Stok Kertas Roll, Lembaran & Merchandise')}
           </h2>
           <p className="text-stone-600 text-xs sm:text-sm mt-0.5">
-            Saldo bersama dari database. Pemotongan mengikuti pemakaian layanan
-            yang sudah diatur; pembatalan membedakan bahan terpakai dan belum
-            terpakai.
+            {tr(
+              'Saldo bersama dari database. Pemotongan mengikuti pemakaian layanan yang sudah diatur; pembatalan membedakan bahan terpakai dan belum terpakai.',
+            )}
           </p>
         </div>
 
@@ -109,8 +110,8 @@ export const InventoryView: React.FC = () => {
           <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              <strong>Perhatian:</strong> {lowStockItems.length} bahan mendekati
-              batas minimum!
+              <strong>{tr('Perhatian:')}</strong> {lowStockItems.length}{' '}
+              {tr('bahan mendekati batas minimum!')}
             </span>
           </div>
         )}
@@ -121,7 +122,7 @@ export const InventoryView: React.FC = () => {
       {/* INVENTORY ITEMS GRID */}
       <div className="space-y-4">
         <h3 className="font-bold text-stone-900 text-sm uppercase tracking-wider">
-          Daftar Stok Bahan Saat Ini
+          {tr('Daftar Stok Bahan Saat Ini')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -141,10 +142,12 @@ export const InventoryView: React.FC = () => {
             if (item.id === 'inv-roll-minilab-6inch') {
               const est4R = Math.floor(item.currentStock / 0.102);
               const estStrip = Math.floor(item.currentStock / 0.051);
-              capacityNote = `Cukup untuk ~${est4R} lembar 4R atau ~${estStrip} photostrip lagi`;
+              capacityNote = tr(
+                `Cukup untuk ~${est4R} lembar 4R atau ~${estStrip} photostrip lagi`,
+              );
             } else if (item.id === 'inv-roll-canvas-plotter-24inch') {
               const est16R = Math.floor(item.currentStock / 0.4);
-              capacityNote = `Cukup untuk ~${est16R} cetak kanvas 16R lagi`;
+              capacityNote = tr(`Cukup untuk ~${est16R} cetak kanvas 16R lagi`);
             }
 
             return (
@@ -161,10 +164,10 @@ export const InventoryView: React.FC = () => {
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
                         {item.type === 'ROLL'
-                          ? 'GULUNGAN ROLL'
+                          ? tr('GULUNGAN ROLL')
                           : item.type === 'SHEET'
                             ? 'LEMBARAN'
-                            : 'BARANG / MERCH'}
+                            : tr('BARANG / MERCH')}
                       </span>
                       <h4 className="font-bold text-stone-900 text-sm mt-0.5">
                         {item.name}
@@ -172,7 +175,7 @@ export const InventoryView: React.FC = () => {
                     </div>
                     {isLow ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md">
-                        Menipis
+                        {tr('Menipis')}
                       </span>
                     ) : (
                       <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md">
@@ -189,24 +192,24 @@ export const InventoryView: React.FC = () => {
                   <div className="space-y-2 pt-2 bg-stone-50/80 p-3 rounded-xl border border-stone-100 text-xs">
                     <div className="flex justify-between items-baseline">
                       <span className="text-stone-600 font-semibold">
-                        Stok Tersedia:
+                        {tr('Stok Tersedia:')}
                       </span>
                       <span className="tabular-nums text-base font-bold text-stone-900">
-                        {item.currentStock} {item.unit}
+                        {item.currentStock} {tr(item.unit)}
                       </span>
                     </div>
 
                     <div className="flex justify-between items-center text-[11px] text-stone-500">
-                      <span>Kapasitas Target (Penyebut):</span>
+                      <span>{tr('Kapasitas Target (Penyebut):')}</span>
                       <span className="tabular-nums font-semibold text-stone-700">
-                        {item.maxStock} {item.unit}
+                        {item.maxStock} {tr(item.unit)}
                       </span>
                     </div>
 
                     <div className="flex justify-between items-center text-[11px] text-stone-500">
-                      <span>Batas Minimum Peringatan:</span>
+                      <span>{tr('Batas Minimum Peringatan:')}</span>
                       <span className="tabular-nums font-semibold text-amber-700">
-                        {item.lowStockThreshold} {item.unit}
+                        {item.lowStockThreshold} {tr(item.unit)}
                       </span>
                     </div>
 
@@ -221,7 +224,7 @@ export const InventoryView: React.FC = () => {
 
                     {capacityNote && (
                       <p className="text-[11px] text-emerald-700 font-medium pt-1">
-                        💡 {capacityNote}
+                        💡 {tr(capacityNote)}
                       </p>
                     )}
                   </div>
@@ -229,7 +232,7 @@ export const InventoryView: React.FC = () => {
 
                 <div className="pt-4 mt-4 border-t border-stone-100 flex items-center justify-between">
                   <span className="text-[11px] text-stone-500">
-                    Nilai Modal:{' '}
+                    {tr('Nilai Modal:')}{' '}
                     {formatRupiah(
                       Math.round(item.currentStock * item.costPerUnit),
                     )}
@@ -240,7 +243,7 @@ export const InventoryView: React.FC = () => {
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs rounded-lg transition-colors shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Restock</span>
+                    <span>{tr('Restock')}</span>
                   </button>
                 </div>
               </div>
@@ -255,7 +258,7 @@ export const InventoryView: React.FC = () => {
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-stone-500" />
             <h3 className="font-bold text-stone-900 text-sm">
-              Riwayat bahan · 250 aktivitas terbaru
+              {tr('Riwayat bahan · 250 aktivitas terbaru')}
             </h3>
           </div>
 
@@ -269,7 +272,8 @@ export const InventoryView: React.FC = () => {
                   : 'bg-stone-100 text-stone-600'
               }`}
             >
-              Semua ({stockLogs.length})
+              {tr('Semua (')}
+              {stockLogs.length})
             </button>
             <button
               onClick={() => setLogFilter('DEDUCT')}
@@ -279,7 +283,7 @@ export const InventoryView: React.FC = () => {
                   : 'bg-stone-100 text-stone-600'
               }`}
             >
-              Potong Pesanan
+              {tr('Potong Pesanan')}
             </button>
             <button
               onClick={() => setLogFilter('RESTORE')}
@@ -289,7 +293,7 @@ export const InventoryView: React.FC = () => {
                   : 'bg-stone-100 text-stone-600'
               }`}
             >
-              Restore Pembatalan
+              {tr('Restore Pembatalan')}
             </button>
             <button
               onClick={() => setLogFilter('RESTOCK')}
@@ -299,7 +303,7 @@ export const InventoryView: React.FC = () => {
                   : 'bg-stone-100 text-stone-600'
               }`}
             >
-              Restock Manual
+              {tr('Restock Manual')}
             </button>
           </div>
         </div>
@@ -308,16 +312,18 @@ export const InventoryView: React.FC = () => {
           className="overflow-x-auto"
           tabIndex={0}
           role="region"
-          aria-label="Riwayat perubahan stok"
+          aria-label={tr('Riwayat perubahan stok')}
         >
           <table className="w-full text-left text-xs">
             <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase tracking-wider font-semibold">
               <tr>
-                <th className="px-4 py-3">Waktu</th>
-                <th className="px-4 py-3">Nama Bahan</th>
-                <th className="px-4 py-3">Perubahan</th>
-                <th className="px-4 py-3">Sisa Stok Akhir</th>
-                <th className="px-4 py-3">Keterangan / Nomor Pesanan</th>
+                <th className="px-4 py-3">{tr('Waktu')}</th>
+                <th className="px-4 py-3">{tr('Nama Bahan')}</th>
+                <th className="px-4 py-3">{tr('Perubahan')}</th>
+                <th className="px-4 py-3">{tr('Sisa Stok Akhir')}</th>
+                <th className="px-4 py-3">
+                  {tr('Keterangan / Nomor Pesanan')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
@@ -371,20 +377,20 @@ export const InventoryView: React.FC = () => {
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            aria-label="Tambah stok bahan"
+            aria-label={tr('Tambah stok bahan')}
             className="qp-dialog !max-w-md"
           >
             <div className="flex items-center justify-between px-6 py-4 bg-stone-900 text-stone-100 border-b border-stone-800">
               <div>
                 <h3 className="text-sm font-bold">
-                  Restock Bahan / Pemasangan Roll
+                  {tr('Restock Bahan / Pemasangan Roll')}
                 </h3>
                 <p className="text-[11px] text-stone-300">
                   {selectedRestockItem.name}
                 </p>
               </div>
               <button
-                aria-label="Tutup penambahan stok"
+                aria-label={tr('Tutup penambahan stok')}
                 onClick={() => setSelectedRestockItem(null)}
                 className="qp-icon-button text-stone-300 hover:text-stone-100"
               >
@@ -394,7 +400,7 @@ export const InventoryView: React.FC = () => {
 
             {restockError && (
               <p role="alert" className="qp-error mx-5 mt-4">
-                {restockError}
+                {tr(restockError)}
               </p>
             )}
             <form
@@ -406,7 +412,8 @@ export const InventoryView: React.FC = () => {
                   className="block text-stone-700 font-semibold mb-1"
                   htmlFor="inventoryview-field-3"
                 >
-                  Jumlah Tambahan ({selectedRestockItem.unit}):
+                  {tr('Jumlah Tambahan (')}
+                  {tr(selectedRestockItem.unit)}):
                 </label>
                 <input
                   id="inventoryview-field-3"
@@ -425,15 +432,15 @@ export const InventoryView: React.FC = () => {
                   className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm tabular-nums font-bold text-stone-900 focus:ring-2 focus:ring-amber-500"
                 />
                 <span className="text-[10px] text-stone-500 mt-1 block">
-                  Stok saat ini: {selectedRestockItem.currentStock}{' '}
-                  {selectedRestockItem.unit} → Menjadi{' '}
+                  {tr('Stok saat ini:')} {selectedRestockItem.currentStock}{' '}
+                  {tr(selectedRestockItem.unit)} {tr('→ Menjadi')}{' '}
                   <strong className="text-stone-900">
                     {Number(
                       (
                         selectedRestockItem.currentStock + restockAmount
                       ).toFixed(2),
                     )}{' '}
-                    {selectedRestockItem.unit}
+                    {tr(selectedRestockItem.unit)}
                   </strong>
                 </span>
               </div>
@@ -442,11 +449,11 @@ export const InventoryView: React.FC = () => {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-stone-700 font-semibold">
-                    Target Kapasitas Gudang / Denominator (
-                    {selectedRestockItem.unit}):
+                    {tr('Target Kapasitas Gudang / Denominator (')}
+                    {tr(selectedRestockItem.unit)}):
                   </label>
                   <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded tabular-nums font-bold">
-                    Penyebut
+                    {tr('Penyebut')}
                   </span>
                 </div>
                 <input
@@ -458,16 +465,17 @@ export const InventoryView: React.FC = () => {
                       1,
                     ),
                   )}
-                  aria-label="Kapasitas maksimum stok"
+                  aria-label={tr('Kapasitas maksimum stok')}
                   value={restockCapacity}
                   onChange={(e) => setRestockCapacity(Number(e.target.value))}
                   className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm tabular-nums font-bold text-stone-900 focus:ring-2 focus:ring-amber-500"
                 />
                 <span className="text-[10px] text-stone-500 mt-1 block leading-relaxed">
-                  💡 Angka ini adalah <strong>denominator (penyebut)</strong>{' '}
-                  pada kartu stok. Sistem otomatis menyesuaikannya agar stok
-                  yang baru ditambahkan tidak melampaui denominator (contoh:
-                  hasil rasio 60/60 atau 60/100, bukan 60/25).
+                  {tr('💡 Angka ini adalah')}{' '}
+                  <strong>{tr('denominator (penyebut)')}</strong>{' '}
+                  {tr(
+                    'pada kartu stok. Sistem otomatis menyesuaikannya agar stok yang baru ditambahkan tidak melampaui denominator (contoh: hasil rasio 60/60 atau 60/100, bukan 60/25).',
+                  )}
                 </span>
               </div>
 
@@ -476,7 +484,7 @@ export const InventoryView: React.FC = () => {
                   className="block text-stone-700 font-semibold mb-1"
                   htmlFor="inventoryview-field-4"
                 >
-                  Catatan / Keterangan Restock:
+                  {tr('Catatan / Keterangan Restock:')}
                 </label>
                 <input
                   id="inventoryview-field-4"
@@ -484,7 +492,9 @@ export const InventoryView: React.FC = () => {
                   required
                   value={restockReason}
                   onChange={(e) => setRestockReason(e.target.value)}
-                  placeholder="Contoh: Beli 1 roll baru dari distributor / supplier"
+                  placeholder={tr(
+                    'Contoh: Beli 1 roll baru dari distributor / supplier',
+                  )}
                   className="w-full border border-stone-300 rounded-lg px-3 py-2 text-stone-900"
                 />
               </div>
@@ -495,7 +505,7 @@ export const InventoryView: React.FC = () => {
                   onClick={() => setSelectedRestockItem(null)}
                   className="px-4 py-2 text-stone-500 hover:text-stone-800 font-medium"
                 >
-                  Batal
+                  {tr('Batal')}
                 </button>
                 <button
                   type="submit"
@@ -503,7 +513,7 @@ export const InventoryView: React.FC = () => {
                   className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Simpan Tambahan Stok</span>
+                  <span>{tr('Simpan Tambahan Stok')}</span>
                 </button>
               </div>
             </form>

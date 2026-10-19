@@ -1,3 +1,5 @@
+import { tr } from './i18n/runtime';
+import { LanguageProvider, useLanguage } from './i18n/LanguageProvider';
 import { PageBoundary } from './components/PageBoundary';
 import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { StudioProvider, useStudio, AppView } from './context/StudioContext';
@@ -87,6 +89,7 @@ const CartDrawer = lazy(() =>
 );
 
 const MainAppContent: React.FC = () => {
+  const { language } = useLanguage();
   const {
     currentView,
     isSupervisor,
@@ -141,13 +144,13 @@ const MainAppContent: React.FC = () => {
       supervision: 'Ringkasan toko',
       rekap: 'Laporan penjualan',
     };
-    document.title = `${titles[currentView] || 'Ruang kerja studio'} — Queen Photo`;
+    document.title = `${tr(titles[currentView] || 'Ruang kerja studio')} — Queen Photo`;
     if (previousView.current !== currentView) {
       window.scrollTo({ top: 0, behavior: 'instant' });
       document.getElementById('main-content')?.focus({ preventScroll: true });
       previousView.current = currentView;
     }
-  }, [currentView]);
+  }, [currentView, language]);
   const [selectedReceiptOrder, setSelectedReceiptOrder] =
     useState<Order | null>(null);
 
@@ -169,7 +172,7 @@ const MainAppContent: React.FC = () => {
         <Suspense
           fallback={
             <p role="status" className="qp-container py-8">
-              Memuat halaman…
+              {tr('Memuat halaman…')}
             </p>
           }
         >
@@ -266,7 +269,7 @@ const MainAppContent: React.FC = () => {
       {/* Floating Cart Button for Customers when items exist */}
       {activeRole === 'CUSTOMER' && cart.length > 0 && !isCartOpen && (
         <aside
-          aria-label="Akses keranjang cepat"
+          aria-label={tr('Akses keranjang cepat')}
           className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 z-40"
         >
           <button
@@ -276,8 +279,8 @@ const MainAppContent: React.FC = () => {
             <ShoppingBag size={20} />
             <span className="text-left flex-1">
               <span className="block text-xs text-stone-200">
-                {cart.reduce((n, item) => n + item.quantity, 0)} item di
-                keranjang
+                {cart.reduce((n, item) => n + item.quantity, 0)}{' '}
+                {tr('item di keranjang')}
               </span>
               <strong className="text-sm">
                 {formatRupiah(
@@ -289,7 +292,7 @@ const MainAppContent: React.FC = () => {
               </strong>
             </span>
             <span className="text-sm pl-4 border-l border-stone-600">
-              Lihat keranjang →
+              {tr('Lihat keranjang →')}
             </span>
           </button>
         </aside>
@@ -305,7 +308,7 @@ const MainAppContent: React.FC = () => {
       <Suspense
         fallback={
           <p role="status" className="qp-notice fixed bottom-4 right-4 z-50">
-            Memuat formulir…
+            {tr('Memuat formulir…')}
           </p>
         }
       >
@@ -327,10 +330,12 @@ const MainAppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <StudioProvider>
-      <PageBoundary>
-        <MainAppContent />
-      </PageBoundary>
-    </StudioProvider>
+    <LanguageProvider>
+      <StudioProvider>
+        <PageBoundary>
+          <MainAppContent />
+        </PageBoundary>
+      </StudioProvider>
+    </LanguageProvider>
   );
 }

@@ -24,6 +24,7 @@ export interface OrderEvent {
   detail: string;
 }
 export interface ServiceItem {
+  english?: { name?: string; description?: string; unit?: string };
   id: string;
   name: string;
   category: ServiceCategory;
@@ -110,6 +111,7 @@ export interface OrderItem {
   id: string;
   serviceId: string;
   serviceName: string;
+  serviceNameEn?: string;
   category: ServiceCategory;
   size: string;
   finish?: string;

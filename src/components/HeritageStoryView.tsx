@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import React from 'react';
 import photo from '../assets/images/queen_photo_gallery_wall_1791784471362.webp';
 import { useStudio } from '../context/StudioContext';
@@ -10,31 +11,34 @@ export const HeritageStoryView: React.FC = () => {
         <div>
           <span className="qp-eyebrow">Queen Photo · Pontianak</span>
           <h1 className="qp-title mt-4">
-            Merawat kenangan,
+            {tr('Merawat kenangan,')}
             <br />
-            <span className="italic text-[#8a6547]">lintas generasi.</span>
+            <span className="italic text-[#8a6547]">
+              {tr('lintas generasi.')}
+            </span>
           </h1>
           <p className="mt-6 text-stone-600 leading-relaxed">
-            Sejak 1980, Queen Photo menjadi bagian dari cerita keluarga di
-            Pontianak. Dari pas foto dan potret keluarga hingga cetakan kecil
-            dari galeri ponsel, setiap kebutuhan punya tempat di studio kami.
+            {tr(
+              'Sejak 1980, Queen Photo menjadi bagian dari cerita keluarga di Pontianak. Dari pas foto dan potret keluarga hingga cetakan kecil dari galeri ponsel, setiap kebutuhan punya tempat di studio kami.',
+            )}
           </p>
           <p className="mt-4 text-stone-600 leading-relaxed">
-            Kami ingin membuat prosesnya lebih mudah: pilih layanan, sampaikan
-            kebutuhan, dan konfirmasikan hasil yang diinginkan bersama staf.
+            {tr(
+              'Kami ingin membuat prosesnya lebih mudah: pilih layanan, sampaikan kebutuhan, dan konfirmasikan hasil yang diinginkan bersama staf.',
+            )}
           </p>
           <button
             className="qp-button mt-7"
             onClick={() => setCurrentView('layanan')}
           >
-            Temukan layanan Anda <ArrowRight size={17} />
+            {tr('Temukan layanan Anda')} <ArrowRight size={17} />
           </button>
         </div>
         <img
           src={photo}
           width="1000"
           height="1000"
-          alt="Inspirasi menata cetakan foto keluarga dalam bingkai"
+          alt={tr('Inspirasi menata cetakan foto keluarga dalam bingkai')}
           className="w-full aspect-square rounded-xl object-cover"
         />
       </section>
@@ -56,10 +60,10 @@ export const HeritageStoryView: React.FC = () => {
           ].map(([title, text]) => (
             <div key={title}>
               <h2 className="!font-sans !tracking-normal text-lg font-semibold">
-                {title}
+                {tr(title)}
               </h2>
               <p className="text-sm text-stone-600 mt-3 leading-relaxed">
-                {text}
+                {tr(text)}
               </p>
             </div>
           ))}
@@ -68,21 +72,23 @@ export const HeritageStoryView: React.FC = () => {
       <section className="qp-container py-12 sm:py-16">
         <div className="qp-panel p-6 sm:p-10 flex flex-col md:flex-row gap-6 justify-between items-start">
           <div>
-            <span className="qp-eyebrow">Datang ke studio</span>
-            <h2 className="text-3xl mt-3">Sampai bertemu di Queen Photo.</h2>
+            <span className="qp-eyebrow">{tr('Datang ke studio')}</span>
+            <h2 className="text-3xl mt-3">
+              {tr('Sampai bertemu di Queen Photo.')}
+            </h2>
             <p className="flex gap-2 items-center text-sm text-stone-600 mt-5">
               <MapPin size={17} />
               Jl. Gajah Mada No. 128, Pontianak
             </p>
             <p className="text-sm text-stone-500 mt-2">
-              Senin–Sabtu · 09.00–20.30 WIB
+              {tr('Senin–Sabtu · 09.00–20.30 WIB')}
             </p>
           </div>
           <button
             className="qp-button qp-button-secondary"
             onClick={() => setCurrentView('layanan')}
           >
-            Lihat layanan & harga <ArrowRight size={17} />
+            {tr('Lihat layanan & harga')} <ArrowRight size={17} />
           </button>
         </div>
       </section>

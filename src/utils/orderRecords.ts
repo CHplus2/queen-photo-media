@@ -63,9 +63,14 @@ export function readOrderRecord(id: string, value: unknown): Order | null {
       item.quantity > 999 ||
       !amount(item.unitPrice) ||
       !amount(item.unitCost) ||
-      !['finish', 'frame', 'notes', 'backgroundColor', 'photoFileName'].every(
-        (k) => item[k] == null || typeof item[k] === 'string',
-      )
+      ![
+        'finish',
+        'frame',
+        'notes',
+        'backgroundColor',
+        'photoFileName',
+        'serviceNameEn',
+      ].every((k) => item[k] == null || typeof item[k] === 'string')
     )
       return null;
   }

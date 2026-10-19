@@ -1,3 +1,5 @@
+import { orderItemName } from '../i18n/catalogText';
+import { tr } from '../i18n/runtime';
 import { paidAmount, remainingAmount } from '../utils/payments';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
@@ -78,25 +80,25 @@ export const StaffOrderQueue: React.FC<{
     <section>
       <div className="flex flex-wrap gap-3 mb-5">
         <label className="relative flex-1 min-w-48">
-          <span className="sr-only">Cari pesanan</span>
+          <span className="sr-only">{tr('Cari pesanan')}</span>
           <Search size={17} className="absolute left-3 top-4 text-stone-500" />
           <input
             className="qp-field !pl-10"
             type="search"
-            placeholder="Nama, nomor pesanan, atau layanan"
+            placeholder={tr('Nama, nomor pesanan, atau layanan')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
         <label>
-          <span className="sr-only">Tampilkan pesanan</span>
+          <span className="sr-only">{tr('Tampilkan pesanan')}</span>
           <select
             className="qp-field"
             value={scope}
             onChange={(e) => setScope(e.target.value)}
           >
-            <option value="active">Perlu tindak lanjut</option>
-            <option value="all">Semua & riwayat penjualan</option>
+            <option value="active">{tr('Perlu tindak lanjut')}</option>
+            <option value="all">{tr('Semua & riwayat penjualan')}</option>
           </select>
         </label>
       </div>
@@ -109,7 +111,7 @@ export const StaffOrderQueue: React.FC<{
                   {o.customerName}
                 </h2>
                 <p className="text-xs text-stone-500 mt-1">
-                  {o.channel === 'ONLINE' ? 'Website' : 'Walk-in'} ·{' '}
+                  {o.channel === 'ONLINE' ? 'Website' : tr('Walk-in')} ·{' '}
                   {formatDateTime(o.createdAt)} WIB
                 </p>
               </div>
@@ -118,25 +120,27 @@ export const StaffOrderQueue: React.FC<{
               </strong>
             </div>
             <p className="text-sm font-medium mt-4">
-              {statusText[o.orderStatus]}
+              {tr(statusText[o.orderStatus])}
             </p>
             <p className="text-xs text-stone-600 mt-1">
               {o.paymentStatus === 'LUNAS'
-                ? 'Pembayaran diterima'
+                ? tr('Pembayaran diterima')
                 : o.paymentStatus === 'SEBAGIAN'
-                  ? `Bayar sebagian · Sisa ${formatRupiah(remainingAmount(o))}`
-                  : 'Belum dibayar'}
+                  ? tr(
+                      `Bayar sebagian · Sisa ${formatRupiah(remainingAmount(o))}`,
+                    )
+                  : tr('Belum dibayar')}
             </p>
             <ul className="text-sm text-stone-600 mt-4 space-y-1">
               {o.items.map((i) => (
                 <li key={i.id}>
-                  {i.quantity}× {i.serviceName}
+                  {i.quantity}× {orderItemName(i)}
                 </li>
               ))}
             </ul>
             {o.estimatedReadyTime && (
               <p className="text-xs text-stone-600 mt-3">
-                Janji: {o.estimatedReadyTime.slice(0, 10)}
+                {tr('Janji:')} {o.estimatedReadyTime.slice(0, 10)}
               </p>
             )}
             <button
@@ -146,14 +150,14 @@ export const StaffOrderQueue: React.FC<{
                 setError('');
               }}
             >
-              Buka pesanan
+              {tr('Buka pesanan')}
             </button>
           </article>
         ))}
       </div>
       {!visible.length && (
         <p className="qp-panel p-10 text-center text-stone-500">
-          Tidak ada pesanan pada pilihan ini.
+          {tr('Tidak ada pesanan pada pilihan ini.')}
         </p>
       )}
       {order && (
@@ -175,8 +179,8 @@ export const StaffOrderQueue: React.FC<{
               <div className="min-w-0">
                 <span className="qp-eyebrow">
                   {order.channel === 'ONLINE'
-                    ? 'Pesanan website'
-                    : 'Penjualan walk-in'}
+                    ? tr('Pesanan website')
+                    : tr('Penjualan walk-in')}
                 </span>
                 <h2 id="staff-order-title" className="text-2xl mt-2">
                   {order.customerName}
@@ -186,7 +190,7 @@ export const StaffOrderQueue: React.FC<{
                 </p>
               </div>
               <button
-                aria-label="Tutup pesanan"
+                aria-label={tr('Tutup pesanan')}
                 className="qp-icon-button shrink-0"
                 disabled={busy}
                 onClick={close}
@@ -196,18 +200,18 @@ export const StaffOrderQueue: React.FC<{
             </div>
             <div className="qp-dialog-content space-y-5">
               <p className="qp-notice">
-                {statusText[order.orderStatus]} ·{' '}
+                {tr(statusText[order.orderStatus])} ·{' '}
                 {order.paymentStatus === 'LUNAS'
-                  ? 'Lunas'
+                  ? tr('Lunas')
                   : order.paymentStatus === 'SEBAGIAN'
-                    ? 'Bayar sebagian'
-                    : 'Belum dibayar'}
+                    ? tr('Bayar sebagian')
+                    : tr('Belum dibayar')}
               </p>
               <ul className="space-y-3">
                 {order.items.map((i) => (
                   <li key={i.id} className="flex justify-between gap-3 text-sm">
                     <div>
-                      {i.quantity}× {i.serviceName}
+                      {i.quantity}× {orderItemName(i)}
                       <p className="text-xs text-stone-500">
                         {[i.size, i.frame, i.notes].filter(Boolean).join(' · ')}
                       </p>
@@ -219,30 +223,30 @@ export const StaffOrderQueue: React.FC<{
                 ))}
               </ul>
               <div className="flex justify-between border-t border-stone-200 pt-4 font-semibold">
-                <span>Total pesanan</span>
+                <span>{tr('Total pesanan')}</span>
                 <span>{formatRupiah(order.totalAmount)}</span>
               </div>
               <div className="qp-notice">
                 <p>
-                  Dibayar {formatRupiah(paidAmount(order))} ·{' '}
+                  {tr('Dibayar')} {formatRupiah(paidAmount(order))} ·{' '}
                   <strong>
-                    Sisa bayar {formatRupiah(remainingAmount(order))}
+                    {tr('Sisa bayar')} {formatRupiah(remainingAmount(order))}
                   </strong>
                 </p>
                 {order.payments?.length ? (
                   <details className="mt-3">
                     <summary className="cursor-pointer">
-                      Riwayat uang masuk
+                      {tr('Riwayat uang masuk')}
                     </summary>
                     <ul className="space-y-2 mt-3">
                       {order.payments.map((p) => (
                         <li key={p.id} className="text-sm">
                           {formatRupiah(p.amount)} ·{' '}
                           {p.method === 'TUNAI_KASIR'
-                            ? 'Tunai'
+                            ? tr('Tunai')
                             : p.method === 'QRIS'
                               ? 'QRIS'
-                              : 'Transfer bank'}{' '}
+                              : tr('Transfer bank')}{' '}
                           · {formatDateTime(p.at)} WIB · {p.by.name}
                         </li>
                       ))}
@@ -252,7 +256,7 @@ export const StaffOrderQueue: React.FC<{
               </div>
               {order.staffNotes && (
                 <p className="text-sm text-stone-600 break-words">
-                  Catatan: {order.staffNotes}
+                  {tr('Catatan:')} {order.staffNotes}
                 </p>
               )}
               {order.customerPhone && (
@@ -262,21 +266,21 @@ export const StaffOrderQueue: React.FC<{
               )}
               {order.channel === 'WALKIN' && order.recordedBy && (
                 <p className="text-xs text-stone-500">
-                  Dicatat: {order.recordedBy.name}
+                  {tr('Dicatat:')} {order.recordedBy.name}
                 </p>
               )}
               {order.paymentStatus === 'LUNAS' && order.paymentVerifiedBy && (
                 <p className="text-xs text-stone-500">
-                  Pembayaran diperiksa: {order.paymentVerifiedBy.name}
+                  {tr('Pembayaran diperiksa:')} {order.paymentVerifiedBy.name}
                   {order.paidAt ? ` · ${formatDateTime(order.paidAt)} WIB` : ''}
                 </p>
               )}
               {order.inventoryStatus === 'NEEDS_REVIEW' && (
                 <p className="qp-notice">
-                  Bahan perlu diperiksa:{' '}
+                  {tr('Bahan perlu diperiksa:')}{' '}
                   {order.inventoryWarnings?.join(', ') ||
-                    'transaksi lama / pemakaian belum diatur'}
-                  . Jangan menganggap stok sudah dipotong.
+                    tr('transaksi lama / pemakaian belum diatur')}
+                  {tr('. Jangan menganggap stok sudah dipotong.')}
                 </p>
               )}
               {isSupervisor &&
@@ -290,7 +294,7 @@ export const StaffOrderQueue: React.FC<{
                     className="qp-button qp-button-secondary w-full"
                     onClick={() => action(() => reconcileStock(order.id))}
                   >
-                    Bahan sudah diatur — catat pemakaian
+                    {tr('Bahan sudah diatur — catat pemakaian')}
                   </button>
                 )}
               {isSupervisor &&
@@ -303,23 +307,28 @@ export const StaffOrderQueue: React.FC<{
                     className="qp-button qp-button-secondary w-full"
                     onClick={() => {
                       const reason = window.prompt(
-                        'Hanya jika saldo Inventaris sudah dihitung fisik SETELAH pesanan ini dibuat. Pemakaian pesanan ini sudah masuk dalam saldo tersebut. Isi catatan hitung fisik; stok tidak akan dipotong lagi.',
+                        tr(
+                          'Hanya jika saldo Inventaris sudah dihitung fisik SETELAH pesanan ini dibuat. Pemakaian pesanan ini sudah masuk dalam saldo tersebut. Isi catatan hitung fisik; stok tidak akan dipotong lagi.',
+                        ),
                       );
                       if (reason?.trim())
                         action(() => reconcileStock(order.id, reason));
                     }}
                   >
-                    Saldo fisik sudah mencakup pesanan ini — selesaikan
-                    pemeriksaan
+                    {tr(
+                      'Saldo fisik sudah mencakup pesanan ini — selesaikan pemeriksaan',
+                    )}
                   </button>
                 )}
               {order.orderStatus === 'DIBATALKAN' && (
                 <p className="qp-notice">
-                  Alasan:{' '}
+                  {tr('Alasan:')}{' '}
                   {order.cancellationReason ||
-                    'Tidak tercatat pada versi lama.'}
+                    tr('Tidak tercatat pada versi lama.')}
                   {paidAmount(order) > 0
-                    ? ' Pembayaran sudah diterima: periksa pengembalian dana secara terpisah.'
+                    ? tr(
+                        ' Pembayaran sudah diterima: periksa pengembalian dana secara terpisah.',
+                      )
                     : ''}
                 </p>
               )}
@@ -336,22 +345,26 @@ export const StaffOrderQueue: React.FC<{
                         setPaymentId(crypto.randomUUID());
                       }}
                     >
-                      Periksa pembayaran
+                      {tr('Periksa pembayaran')}
                     </button>
                   )}
                   {verify && (
                     <div className="qp-notice space-y-4">
                       <p>
                         {order.paymentMethod === 'TUNAI_KASIR'
-                          ? 'Pastikan uang tunai sudah diterima.'
-                          : 'Periksa uang masuk pada aplikasi bank atau merchant QRIS. Screenshot pelanggan saja belum membuktikan pembayaran.'}
+                          ? tr('Pastikan uang tunai sudah diterima.')
+                          : tr(
+                              'Periksa uang masuk pada aplikasi bank atau merchant QRIS. Screenshot pelanggan saja belum membuktikan pembayaran.',
+                            )}
                       </p>
                       <p>
-                        Sudah dibayar {formatRupiah(paidAmount(order))} · Sisa{' '}
-                        {formatRupiah(remainingAmount(order))}
+                        {tr('Sudah dibayar')} {formatRupiah(paidAmount(order))}{' '}
+                        {tr('· Sisa')} {formatRupiah(remainingAmount(order))}
                       </p>
                       <label className="block">
-                        <span className="qp-label">Jumlah uang masuk (Rp)</span>
+                        <span className="qp-label">
+                          {tr('Jumlah uang masuk (Rp)')}
+                        </span>
                         <input
                           className="qp-field"
                           type="number"
@@ -364,7 +377,7 @@ export const StaffOrderQueue: React.FC<{
                       </label>
                       <label className="block">
                         <span className="qp-label">
-                          Cara pembayaran uang masuk
+                          {tr('Cara pembayaran uang masuk')}
                         </span>
                         <select
                           className="qp-field"
@@ -375,14 +388,16 @@ export const StaffOrderQueue: React.FC<{
                             )
                           }
                         >
-                          <option value="TUNAI_KASIR">Tunai</option>
+                          <option value="TUNAI_KASIR">{tr('Tunai')}</option>
                           <option value="QRIS">QRIS</option>
-                          <option value="TRANSFER_BANK">Transfer bank</option>
+                          <option value="TRANSFER_BANK">
+                            {tr('Transfer bank')}
+                          </option>
                           {!['TUNAI_KASIR', 'QRIS', 'TRANSFER_BANK'].includes(
                             paymentMethod,
                           ) && (
                             <option value={paymentMethod}>
-                              Transfer bank (lama)
+                              {tr('Transfer bank (lama)')}
                             </option>
                           )}
                         </select>
@@ -400,7 +415,8 @@ export const StaffOrderQueue: React.FC<{
                           )
                         }
                       >
-                        Uang sudah masuk — simpan pembayaran <Check size={16} />
+                        {tr('Uang sudah masuk — simpan pembayaran')}{' '}
+                        <Check size={16} />
                       </button>
                     </div>
                   )}
@@ -416,7 +432,7 @@ export const StaffOrderQueue: React.FC<{
                         )
                       }
                     >
-                      Pekerjaan selesai — siap diambil
+                      {tr('Pekerjaan selesai — siap diambil')}
                     </button>
                   )}
                   {order.orderStatus !== 'SELESAI' && (
@@ -427,13 +443,14 @@ export const StaffOrderQueue: React.FC<{
                         action(() => updateOrderStatus(order.id, 'SELESAI'))
                       }
                     >
-                      Sudah diserahkan — selesai
+                      {tr('Sudah diserahkan — selesai')}
                     </button>
                   )}
                   {order.paymentStatus !== 'LUNAS' && (
                     <p className="text-xs text-stone-500">
-                      Selesaikan pemeriksaan pembayaran sebelum menyerahkan
-                      pesanan.
+                      {tr(
+                        'Selesaikan pemeriksaan pembayaran sebelum menyerahkan pesanan.',
+                      )}
                     </p>
                   )}
                   <button
@@ -441,12 +458,14 @@ export const StaffOrderQueue: React.FC<{
                     className="text-sm text-red-800 underline min-h-11"
                     onClick={() => setCancel(!cancel)}
                   >
-                    Batalkan pesanan
+                    {tr('Batalkan pesanan')}
                   </button>
                   {cancel && (
                     <div className="border border-red-200 rounded-xl p-4 space-y-4">
                       <label className="block">
-                        <span className="qp-label">Alasan pembatalan</span>
+                        <span className="qp-label">
+                          {tr('Alasan pembatalan')}
+                        </span>
                         <textarea
                           className="qp-field"
                           value={reason}
@@ -455,7 +474,9 @@ export const StaffOrderQueue: React.FC<{
                         />
                       </label>
                       <label className="block">
-                        <span className="qp-label">Bahan sudah terpakai?</span>
+                        <span className="qp-label">
+                          {tr('Bahan sudah terpakai?')}
+                        </span>
                         <select
                           className="qp-field"
                           value={materials}
@@ -464,16 +485,19 @@ export const StaffOrderQueue: React.FC<{
                           }
                         >
                           <option value="used">
-                            Sudah terpakai — jangan kembalikan stok
+                            {tr('Sudah terpakai — jangan kembalikan stok')}
                           </option>
                           <option value="unused">
-                            Belum terpakai — kembalikan potongan tercatat
+                            {tr(
+                              'Belum terpakai — kembalikan potongan tercatat',
+                            )}
                           </option>
                         </select>
                       </label>
                       <p className="text-xs text-stone-500">
-                        Kertas yang sudah dicetak tidak kembali menjadi bahan
-                        baru. Pembatalan tidak otomatis mengembalikan uang.
+                        {tr(
+                          'Kertas yang sudah dicetak tidak kembali menjadi bahan baru. Pembatalan tidak otomatis mengembalikan uang.',
+                        )}
                       </p>
                       <button
                         className="qp-button w-full"
@@ -487,7 +511,7 @@ export const StaffOrderQueue: React.FC<{
                           )
                         }
                       >
-                        Konfirmasi pembatalan
+                        {tr('Konfirmasi pembatalan')}
                       </button>
                     </div>
                   )}
@@ -499,7 +523,7 @@ export const StaffOrderQueue: React.FC<{
                   onClick={() => onPrintReceipt(order)}
                 >
                   <Printer size={17} />
-                  Struk
+                  {tr('Struk')}
                 </button>
                 {order.customerPhone && (
                   <a
@@ -509,25 +533,25 @@ export const StaffOrderQueue: React.FC<{
                     rel="noreferrer"
                   >
                     <MessageCircle size={17} />
-                    Hubungi pelanggan
+                    {tr('Hubungi pelanggan')}
                   </a>
                 )}
               </div>
               {error && (
                 <p className="qp-error" role="alert">
-                  {error}
+                  {tr(error)}
                 </p>
               )}
               {order.history?.length ? (
                 <details>
                   <summary className="text-sm cursor-pointer py-2">
-                    Riwayat perubahan
+                    {tr('Riwayat perubahan')}
                   </summary>
                   <ol className="mt-3 space-y-3">
                     {order.history.map((event, i) => (
                       <li className="text-xs text-stone-600" key={i}>
                         {formatDateTime(event.at)} WIB · {event.by.name}
-                        <span className="block mt-1">{event.detail}</span>
+                        <span className="block mt-1">{tr(event.detail)}</span>
                       </li>
                     ))}
                   </ol>

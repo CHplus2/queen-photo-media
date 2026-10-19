@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import React from 'react';
 import studio from '../assets/images/queen_photo_modern_studio_1791787204044.webp';
 import strips from '../assets/images/queen_photo_genz_photostrips_1791787249531.webp';
@@ -23,7 +24,9 @@ export const ServiceArtwork: React.FC<{
       <img
         className="w-full h-full object-cover"
         src={artwork[category]}
-        alt="Ilustrasi layanan foto; konfirmasikan contoh hasil dengan studio"
+        alt={tr(
+          'Ilustrasi layanan foto; konfirmasikan contoh hasil dengan studio',
+        )}
         loading="lazy"
         width="600"
         height="500"
@@ -34,7 +37,7 @@ export const ServiceArtwork: React.FC<{
       </div>
     )}
     <span className="absolute bottom-2 left-2 text-[10px] bg-white/95 text-stone-600 rounded px-2 py-1">
-      Ilustrasi layanan
+      {tr('Ilustrasi layanan')}
     </span>
   </div>
 );

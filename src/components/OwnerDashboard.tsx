@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import { CashClosing } from './CashClosing';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
@@ -27,7 +28,7 @@ export const OwnerDashboard: React.FC = () => {
       ['BANK', 'Transfer bank'],
     ] as const
   ).map(([id, label]) => ({
-    label,
+    label: tr(label),
     total: report.payments
       .filter((o) =>
         id === 'BANK'
@@ -36,7 +37,9 @@ export const OwnerDashboard: React.FC = () => {
       )
       .reduce((n, o) => n + o.totalAmount, 0),
   }));
-  const recap = `RINGKASAN QUEEN PHOTO · ${day} WIB\nPenjualan lunas: ${formatRupiah(report.sales.revenue)} (di luar ongkir)\n${channels.map((c) => `${c.label} tercatat: ${formatRupiah(c.total)}`).join('\n')}\nMenunggu pembayaran: ${report.pending.length} pesanan\nSiap diambil: ${report.ready.length}\nPembatalan hari ini: ${report.cancelled.length}\nPembatalan berbayar perlu cek refund: ${report.refundsToCheck.length}\nStok rendah: ${low.length} bahan\nBahan perlu pemeriksaan: ${report.materialReview.length} pesanan\nPenerimaan belum dikurangi pengembalian dana. ${report.legacyPayments ? `${report.legacyPayments} pembayaran lama menggunakan tanggal pesanan.` : ''}`;
+  const recap = tr(
+    `RINGKASAN QUEEN PHOTO · ${day} WIB\nPenjualan lunas: ${formatRupiah(report.sales.revenue)} (di luar ongkir)\n${channels.map((c) => tr(`${c.label} tercatat: ${formatRupiah(c.total)}`)).join('\n')}\nMenunggu pembayaran: ${report.pending.length} pesanan\nSiap diambil: ${report.ready.length}\nPembatalan hari ini: ${report.cancelled.length}\nPembatalan berbayar perlu cek refund: ${report.refundsToCheck.length}\nStok rendah: ${low.length} bahan\nBahan perlu pemeriksaan: ${report.materialReview.length} pesanan\nPenerimaan belum dikurangi pengembalian dana. ${report.legacyPayments ? tr(`${report.legacyPayments} pembayaran lama menggunakan tanggal pesanan.`) : ''}`,
+  );
   const staff = new Map<
     string,
     { name: string; count: number; amount: number }
@@ -56,17 +59,18 @@ export const OwnerDashboard: React.FC = () => {
     <div className="qp-container py-8 sm:py-10 space-y-6">
       <div className="flex flex-wrap justify-between gap-5 items-end">
         <div>
-          <span className="qp-eyebrow">Supervisi jarak jauh</span>
+          <span className="qp-eyebrow">{tr('Supervisi jarak jauh')}</span>
           <h1 className="text-3xl !font-sans font-semibold mt-2">
-            {isSupervisor ? 'Ringkasan toko' : 'Penjualan hari ini'}
+            {isSupervisor ? tr('Ringkasan toko') : tr('Penjualan hari ini')}
           </h1>
           <p className="text-sm text-stone-500 mt-3">
-            Periksa penjualan dan pengecualian tanpa membaca satu per satu pesan
-            grup.
+            {tr(
+              'Periksa penjualan dan pengecualian tanpa membaca satu per satu pesan grup.',
+            )}
           </p>
         </div>
         <label>
-          <span className="qp-label">Tanggal ringkasan (WIB)</span>
+          <span className="qp-label">{tr('Tanggal ringkasan (WIB)')}</span>
           <input
             className="qp-field"
             type="date"
@@ -80,15 +84,18 @@ export const OwnerDashboard: React.FC = () => {
       </div>
       {(!isFirebaseConnected || !inventoryReady) && (
         <p role="status" className="qp-notice">
-          Menunggu data terbaru. Angka belum dapat dianggap sebagai saldo
-          terakhir saat koneksi terputus.
+          {tr(
+            'Menunggu data terbaru. Angka belum dapat dianggap sebagai saldo terakhir saat koneksi terputus.',
+          )}
         </p>
       )}
       {invalidOrderIds.length > 0 && (
         <p role="alert" className="qp-error">
-          {invalidOrderIds.length} data pesanan tidak valid. Angka laporan belum
-          lengkap dan tutup kas dinonaktifkan. Periksa ID ini di Firestore
-          sebelum memperbaiki data: {invalidOrderIds.join(', ')}
+          {invalidOrderIds.length}{' '}
+          {tr(
+            'data pesanan tidak valid. Angka laporan belum lengkap dan tutup kas dinonaktifkan. Periksa ID ini di Firestore sebelum memperbaiki data:',
+          )}{' '}
+          {invalidOrderIds.join(', ')}
         </p>
       )}
       <CashClosing
@@ -121,28 +128,29 @@ export const OwnerDashboard: React.FC = () => {
         ].map(([label, value, caption]) => (
           <article key={label} className="qp-panel p-5">
             <h2 className="!font-sans text-sm text-stone-500 !tracking-normal">
-              {label}
+              {tr(label)}
             </h2>
             <strong className="block text-2xl mt-3 tabular-nums">
               {value}
             </strong>
-            <p className="text-xs text-stone-500 mt-3">{caption}</p>
+            <p className="text-xs text-stone-500 mt-3">{tr(caption)}</p>
           </article>
         ))}
       </div>
       <div className="grid lg:grid-cols-2 gap-5">
         <section className="qp-panel p-5 sm:p-6">
           <h2 className="!font-sans text-lg font-semibold">
-            Penerimaan yang dicatat
+            {tr('Penerimaan yang dicatat')}
           </h2>
           <p className="text-xs text-stone-500 mt-2">
-            Tanggal verifikasi pembayaran. Penerimaan kotor termasuk ongkir,
-            belum dikurangi refund.
+            {tr(
+              'Tanggal verifikasi pembayaran. Penerimaan kotor termasuk ongkir, belum dikurangi refund.',
+            )}
           </p>
           <dl className="space-y-4 mt-6">
             {channels.map((c) => (
               <div key={c.label} className="flex justify-between gap-3 text-sm">
-                <dt>{c.label}</dt>
+                <dt>{tr(c.label)}</dt>
                 <dd className="font-semibold tabular-nums">
                   {formatRupiah(c.total)}
                 </dd>
@@ -151,42 +159,50 @@ export const OwnerDashboard: React.FC = () => {
           </dl>
           {report.legacyPayments > 0 && (
             <p className="qp-notice mt-5">
-              {report.legacyPayments} transaksi lama belum memiliki tanggal
-              verifikasi. Angkanya menggunakan tanggal pesanan dan perlu
-              dicocokkan dengan bank / kas.
+              {report.legacyPayments}{' '}
+              {tr(
+                'transaksi lama belum memiliki tanggal verifikasi. Angkanya menggunakan tanggal pesanan dan perlu dicocokkan dengan bank / kas.',
+              )}
             </p>
           )}
           <p className="text-xs text-stone-500 mt-5">
-            Cocokkan tunai dengan hitungan fisik dan non-tunai dengan aplikasi
-            bank / merchant. Ringkasan ini bukan saldo bank atau saldo laci kas.
+            {tr(
+              'Cocokkan tunai dengan hitungan fisik dan non-tunai dengan aplikasi bank / merchant. Ringkasan ini bukan saldo bank atau saldo laci kas.',
+            )}
           </p>
         </section>
         <section className="qp-panel p-5 sm:p-6">
-          <h2 className="!font-sans text-lg font-semibold">Perlu perhatian</h2>
+          <h2 className="!font-sans text-lg font-semibold">
+            {tr('Perlu perhatian')}
+          </h2>
           <ul className="mt-5 space-y-4 text-sm">
             <li>
-              {report.refundsToCheck.length} pembatalan berbayar perlu diperiksa
-              pengembalian dananya.
+              {report.refundsToCheck.length}{' '}
+              {tr('pembatalan berbayar perlu diperiksa pengembalian dananya.')}
             </li>
             <li>
-              {report.materialReview.length} pesanan belum memiliki pemotongan
-              bahan yang dapat dipastikan.
+              {report.materialReview.length}{' '}
+              {tr(
+                'pesanan belum memiliki pemotongan bahan yang dapat dipastikan.',
+              )}
             </li>
-            <li>{low.length} bahan berada pada batas stok rendah.</li>
+            <li>
+              {low.length} {tr('bahan berada pada batas stok rendah.')}
+            </li>
           </ul>
           <div className="flex flex-wrap gap-3 mt-6">
             <button
               className="qp-button qp-button-secondary"
               onClick={() => setCurrentView('orders')}
             >
-              Tindak lanjut pesanan <ArrowRight size={16} />
+              {tr('Tindak lanjut pesanan')} <ArrowRight size={16} />
             </button>
             {isSupervisor && (
               <button
                 className="qp-button qp-button-secondary"
                 onClick={() => setCurrentView('inventory')}
               >
-                Periksa inventaris
+                {tr('Periksa inventaris')}
               </button>
             )}
           </div>
@@ -195,10 +211,10 @@ export const OwnerDashboard: React.FC = () => {
       <section className="qp-panel p-5 sm:p-6">
         <div className="flex flex-wrap justify-between gap-4 items-center">
           <h2 className="!font-sans text-lg font-semibold">
-            Penjualan menurut pencatat
+            {tr('Penjualan menurut pencatat')}
           </h2>
           <span className="text-xs text-stone-500">
-            Tanggal pesanan yang dipilih
+            {tr('Tanggal pesanan yang dipilih')}
           </span>
         </div>
         <div className="divide-y divide-stone-200 mt-4">
@@ -210,7 +226,7 @@ export const OwnerDashboard: React.FC = () => {
               <div className="min-w-0 break-words">
                 {s.name}
                 <p className="text-xs text-stone-500 mt-1">
-                  {s.count} transaksi dicatat
+                  {s.count} {tr('transaksi dicatat')}
                 </p>
               </div>
               <strong className="shrink-0">{formatRupiah(s.amount)}</strong>
@@ -219,7 +235,7 @@ export const OwnerDashboard: React.FC = () => {
         </div>
         {!staff.size && (
           <p className="text-sm text-stone-500 mt-4">
-            Belum ada penjualan pada tanggal ini.
+            {tr('Belum ada penjualan pada tanggal ini.')}
           </p>
         )}
       </section>
@@ -227,11 +243,12 @@ export const OwnerDashboard: React.FC = () => {
         <div className="flex flex-wrap gap-4 justify-between items-center">
           <div>
             <h2 className="!font-sans text-lg font-semibold">
-              Ringkasan untuk grup WhatsApp
+              {tr('Ringkasan untuk grup WhatsApp')}
             </h2>
             <p className="text-sm text-stone-500 mt-2">
-              Staff cukup membagikan ringkasan; tidak perlu mengetik ulang semua
-              transaksi.
+              {tr(
+                'Staff cukup membagikan ringkasan; tidak perlu mengetik ulang semua transaksi.',
+              )}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -248,7 +265,7 @@ export const OwnerDashboard: React.FC = () => {
               }}
             >
               <ClipboardCopy size={17} />
-              {copied ? 'Tersalin' : 'Salin'}
+              {copied ? tr('Tersalin') : tr('Salin')}
             </button>
             <a
               className="qp-button"
@@ -257,16 +274,18 @@ export const OwnerDashboard: React.FC = () => {
               rel="noreferrer"
             >
               <Share2 size={17} />
-              Bagikan ke WhatsApp
+              {tr('Bagikan ke WhatsApp')}
             </a>
           </div>
         </div>
         <pre className="qp-notice mt-5 whitespace-pre-wrap !font-sans">
-          {recap}
+          {tr(recap)}
         </pre>
         <p role="status" className="text-xs text-stone-500 mt-3">
           {copyError ||
-            'Pilih sendiri grup tujuan di WhatsApp. Tidak ada pesan yang dikirim otomatis.'}
+            tr(
+              'Pilih sendiri grup tujuan di WhatsApp. Tidak ada pesan yang dikirim otomatis.',
+            )}
         </p>
       </section>
     </div>

@@ -1,3 +1,5 @@
+import { serviceText } from '../i18n/catalogText';
+import { tr } from '../i18n/runtime';
 import { ServiceArtwork } from './ServiceArtwork';
 import React, { useEffect, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
@@ -50,7 +52,7 @@ export const ServicesCatalog: React.FC = () => {
     (service) =>
       service.isActive !== false &&
       (category === 'all' || service.category === category) &&
-      `${service.name} ${service.description}`
+      `${service.name} ${service.description} ${service.english?.name || ''} ${service.english?.description || ''}`
         .toLocaleLowerCase('id')
         .includes(search.trim().toLocaleLowerCase('id')),
   );
@@ -59,16 +61,19 @@ export const ServicesCatalog: React.FC = () => {
       <div className="qp-container">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <span className="qp-eyebrow">Layanan Queen Photo</span>
-            <h2 className="qp-title mt-3">Ada cerita yang ingin dicetak?</h2>
+            <span className="qp-eyebrow">{tr('Layanan Queen Photo')}</span>
+            <h2 className="qp-title mt-3">
+              {tr('Ada cerita yang ingin dicetak?')}
+            </h2>
             <p className="text-stone-600 mt-4 max-w-xl">
-              Pilih layanan sesuai kebutuhan. Sesuaikan detailnya, atau langsung
-              tambahkan pilihan standar.
+              {tr(
+                'Pilih layanan sesuai kebutuhan. Sesuaikan detailnya, atau langsung tambahkan pilihan standar.',
+              )}
             </p>
           </div>
           <div className="relative w-full md:w-72 shrink-0">
             <label htmlFor="service-search" className="sr-only">
-              Cari layanan
+              {tr('Cari layanan')}
             </label>
             <Search
               size={18}
@@ -77,7 +82,7 @@ export const ServicesCatalog: React.FC = () => {
             <input
               id="service-search"
               type="search"
-              placeholder="Cari layanan…"
+              placeholder={tr('Cari layanan…')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="qp-field !pl-11"
@@ -86,7 +91,7 @@ export const ServicesCatalog: React.FC = () => {
         </div>
         <div
           role="group"
-          aria-label="Kategori layanan"
+          aria-label={tr('Kategori layanan')}
           className="flex gap-2 overflow-x-auto py-2 mt-7 mb-5 -mx-1 px-1"
         >
           {categories.map((cat) => (
@@ -96,12 +101,12 @@ export const ServicesCatalog: React.FC = () => {
               aria-pressed={category === cat.id}
               onClick={() => setCategory(cat.id)}
             >
-              {cat.label}
+              {tr(cat.label)}
             </button>
           ))}
         </div>
         <p role="status" className="text-xs text-stone-500 mb-5">
-          {visible.length} layanan
+          {visible.length} {tr('layanan')}
           {category !== 'all'
             ? ` · ${categories.find((c) => c.id === category)?.label}`
             : ''}
@@ -129,11 +134,11 @@ export const ServicesCatalog: React.FC = () => {
                   {quantity > 0 ? (
                     <span className="text-xs font-semibold text-stone-700 flex items-center gap-1">
                       <Check size={14} />
-                      {quantity} di keranjang
+                      {quantity} {tr('di keranjang')}
                     </span>
                   ) : service.popular ? (
                     <span className="text-xs text-stone-600 bg-stone-100 px-3 py-1 rounded-full">
-                      Pilihan populer
+                      {tr('Pilihan populer')}
                     </span>
                   ) : null}
                 </div>
@@ -141,26 +146,26 @@ export const ServicesCatalog: React.FC = () => {
                   {cat?.label}
                 </span>
                 <h3 className="text-lg font-semibold leading-snug mt-2">
-                  {service.name}
+                  {serviceText(service, 'name')}
                 </h3>
                 <p className="text-sm text-stone-600 leading-relaxed mt-3 mb-6">
-                  {service.description}
+                  {serviceText(service, 'description')}
                 </p>
                 <div className="mt-auto pt-5 border-t border-stone-200">
                   <p className="text-xs text-stone-500">
-                    {quote ? 'Mulai dari' : 'Harga paket'}
+                    {quote ? tr('Mulai dari') : tr('Harga paket')}
                   </p>
                   <p className="text-xl font-semibold tabular-nums mt-1">
                     {formatRupiah(service.basePrice)}
                     <span className="block text-xs font-normal text-stone-500 mt-1">
-                      per {service.unit}
+                      {tr('per')} {tr(serviceText(service, 'unit'))}
                     </span>
                   </p>
                   <button
                     className="qp-button w-full mt-5"
                     onClick={() => openOrderWithService(service)}
                   >
-                    Pilih layanan <ArrowRight size={16} />
+                    {tr('Pilih layanan')} <ArrowRight size={16} />
                   </button>
                   {!quote && (
                     <button
@@ -171,12 +176,12 @@ export const ServicesCatalog: React.FC = () => {
                       }}
                     >
                       <Plus size={15} />
-                      Tambah pilihan standar
+                      {tr('Tambah pilihan standar')}
                     </button>
                   )}
                   {quote && (
                     <p className="text-xs text-stone-500 mt-3 text-center">
-                      Rincian & jadwal dikonfirmasi staf.
+                      {tr('Rincian & jadwal dikonfirmasi staf.')}
                     </p>
                   )}
                 </div>
@@ -188,10 +193,10 @@ export const ServicesCatalog: React.FC = () => {
           <div className="qp-panel text-center py-16 px-6">
             <Search className="mx-auto text-stone-400" size={30} />
             <h3 className="text-xl font-semibold mt-4">
-              Layanan belum ditemukan
+              {tr('Layanan belum ditemukan')}
             </h3>
             <p className="text-stone-500 mt-2">
-              Coba kata lain atau lihat seluruh layanan.
+              {tr('Coba kata lain atau lihat seluruh layanan.')}
             </p>
             <button
               className="qp-button qp-button-secondary mt-6"
@@ -200,7 +205,7 @@ export const ServicesCatalog: React.FC = () => {
                 setCategory('all');
               }}
             >
-              Tampilkan semua layanan
+              {tr('Tampilkan semua layanan')}
             </button>
           </div>
         )}
@@ -210,7 +215,7 @@ export const ServicesCatalog: React.FC = () => {
           <div className="bg-stone-900 text-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
             <Check size={18} className="shrink-0" />
             <p role="status" className="text-sm flex-1 min-w-0">
-              Ditambahkan ke keranjang
+              {tr('Ditambahkan ke keranjang')}
               <span className="block text-xs text-stone-300 truncate">
                 {added}
               </span>
@@ -222,11 +227,11 @@ export const ServicesCatalog: React.FC = () => {
                 setAdded('');
               }}
             >
-              Lihat
+              {tr('Lihat')}
             </button>
             <button
               className="qp-icon-button !min-w-8"
-              aria-label="Tutup notifikasi"
+              aria-label={tr('Tutup notifikasi')}
               onClick={() => setAdded('')}
             >
               <X size={16} />

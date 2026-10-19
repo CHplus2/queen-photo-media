@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import React, { useState, useEffect } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { useDialog } from '../hooks/useDialog';
@@ -65,13 +66,13 @@ export const AdminAuthModal: React.FC<Props> = ({ isOpen, onClose }) => {
       >
         <div className="qp-dialog-header">
           <div>
-            <span className="qp-eyebrow">Khusus tim Queen Photo</span>
+            <span className="qp-eyebrow">{tr('Khusus tim Queen Photo')}</span>
             <h2 id="staff-login-title" className="text-2xl mt-2">
-              Masuk ruang kerja
+              {tr('Masuk ruang kerja')}
             </h2>
           </div>
           <button
-            aria-label="Tutup login staf"
+            aria-label={tr('Tutup login staf')}
             disabled={busy}
             className="qp-icon-button"
             onClick={onClose}
@@ -81,12 +82,13 @@ export const AdminAuthModal: React.FC<Props> = ({ isOpen, onClose }) => {
         </div>
         <form onSubmit={submit} className="qp-dialog-content space-y-5">
           <p className="text-sm text-stone-600">
-            Kelola pesanan, layanan, dan laporan studio menggunakan akun staf
-            yang telah diizinkan.
+            {tr(
+              'Kelola pesanan, layanan, dan laporan studio menggunakan akun staf yang telah diizinkan.',
+            )}
           </p>
           <div>
             <label className="qp-label" htmlFor="staff-email">
-              Email staf
+              {tr('Email staf')}
             </label>
             <input
               className="qp-field"
@@ -101,7 +103,7 @@ export const AdminAuthModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
           <div>
             <label className="qp-label" htmlFor="staff-password">
-              Kata sandi
+              {tr('Kata sandi')}
             </label>
             <div className="relative">
               <input
@@ -117,7 +119,9 @@ export const AdminAuthModal: React.FC<Props> = ({ isOpen, onClose }) => {
               <button
                 type="button"
                 aria-label={
-                  visible ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'
+                  visible
+                    ? tr('Sembunyikan kata sandi')
+                    : tr('Tampilkan kata sandi')
                 }
                 aria-pressed={visible}
                 onClick={() => setVisible(!visible)}
@@ -129,16 +133,16 @@ export const AdminAuthModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
           {error && (
             <p role="alert" className="qp-error">
-              {error}
+              {tr(error)}
             </p>
           )}
           {message && (
             <p role="status" className="qp-notice">
-              {message}
+              {tr(message)}
             </p>
           )}
           <button type="submit" disabled={busy} className="qp-button w-full">
-            {busy ? 'Memeriksa akun…' : 'Masuk'}
+            {busy ? tr('Memeriksa akun…') : tr('Masuk')}
             <ArrowRight size={17} />
           </button>
           <button
@@ -164,11 +168,11 @@ export const AdminAuthModal: React.FC<Props> = ({ isOpen, onClose }) => {
               }
             }}
           >
-            Lupa kata sandi?
+            {tr('Lupa kata sandi?')}
           </button>
           <p className="text-xs text-stone-500 text-center flex items-center justify-center gap-2">
             <LockKeyhole size={13} />
-            Akses hanya untuk staf yang berwenang.
+            {tr('Akses hanya untuk staf yang berwenang.')}
           </p>
         </form>
       </section>

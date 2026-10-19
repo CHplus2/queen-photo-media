@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import React, { useEffect, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import type { InventoryItem, StockUsage } from '../types';
@@ -49,16 +50,16 @@ export const MaterialSetup: React.FC = () => {
   return (
     <section className="qp-panel p-5 sm:p-6">
       <h2 className="text-lg !font-sans font-semibold">
-        Pengaturan bahan otomatis
+        {tr('Pengaturan bahan otomatis')}
       </h2>
       <p className="text-sm text-stone-600 mt-3">
-        Stok dibaca bersama dari database. Atur pemakaian untuk setiap 1 unit /
-        paket layanan sesuai hasil ukur di toko. Angka contoh aplikasi tidak
-        dipakai sebagai saldo stok.
+        {tr(
+          'Stok dibaca bersama dari database. Atur pemakaian untuk setiap 1 unit / paket layanan sesuai hasil ukur di toko. Angka contoh aplikasi tidak dipakai sebagai saldo stok.',
+        )}
       </p>
       {!inventoryReady && (
         <p className="qp-notice mt-4">
-          Inventaris belum tersambung. Tunggu sebelum mengubah data.
+          {tr('Inventaris belum tersambung. Tunggu sebelum mengubah data.')}
         </p>
       )}
       <details
@@ -66,7 +67,7 @@ export const MaterialSetup: React.FC = () => {
         open={!inventory.length}
       >
         <summary className="text-sm font-semibold cursor-pointer py-3">
-          Tambah bahan / saldo awal
+          {tr('Tambah bahan / saldo awal')}
         </summary>
         <form
           className="grid sm:grid-cols-2 gap-4 mt-4"
@@ -89,7 +90,7 @@ export const MaterialSetup: React.FC = () => {
           }}
         >
           <label>
-            <span className="qp-label">Nama bahan</span>
+            <span className="qp-label">{tr('Nama bahan')}</span>
             <input
               className="qp-field"
               required
@@ -99,31 +100,33 @@ export const MaterialSetup: React.FC = () => {
             />
           </label>
           <label>
-            <span className="qp-label">Jenis bahan</span>
+            <span className="qp-label">{tr('Jenis bahan')}</span>
             <select
               className="qp-field"
               value={type}
               onChange={(e) => setType(e.target.value as InventoryItem['type'])}
             >
-              <option value="ROLL">Roll kertas</option>
-              <option value="SHEET">Kertas lembar</option>
-              <option value="MERCHANDISE">Produk / merchandise</option>
-              <option value="FRAME">Bingkai</option>
+              <option value="ROLL">{tr('Roll kertas')}</option>
+              <option value="SHEET">{tr('Kertas lembar')}</option>
+              <option value="MERCHANDISE">{tr('Produk / merchandise')}</option>
+              <option value="FRAME">{tr('Bingkai')}</option>
             </select>
           </label>
           <label>
-            <span className="qp-label">Satuan stok</span>
+            <span className="qp-label">{tr('Satuan stok')}</span>
             <input
               className="qp-field"
               required
               maxLength={30}
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              placeholder="meter, lembar, pcs…"
+              placeholder={tr('meter, lembar, pcs…')}
             />
           </label>
           <label>
-            <span className="qp-label">Saldo awal hasil hitung fisik</span>
+            <span className="qp-label">
+              {tr('Saldo awal hasil hitung fisik')}
+            </span>
             <input
               className="qp-field"
               type="number"
@@ -135,7 +138,9 @@ export const MaterialSetup: React.FC = () => {
             />
           </label>
           <label>
-            <span className="qp-label">Peringatkan saat stok di bawah</span>
+            <span className="qp-label">
+              {tr('Peringatkan saat stok di bawah')}
+            </span>
             <input
               className="qp-field"
               type="number"
@@ -148,7 +153,7 @@ export const MaterialSetup: React.FC = () => {
           </label>
           <label>
             <span className="qp-label">
-              Biaya per satuan bahan (Rp, opsional)
+              {tr('Biaya per satuan bahan (Rp, opsional)')}
             </span>
             <input
               className="qp-field"
@@ -163,13 +168,13 @@ export const MaterialSetup: React.FC = () => {
             className="qp-button self-end"
             disabled={busy || !inventoryReady}
           >
-            Tambah bahan
+            {tr('Tambah bahan')}
           </button>
         </form>
       </details>
       <details className="mt-4 border-t border-stone-200 pt-3">
         <summary className="text-sm font-semibold cursor-pointer py-3">
-          Atur pemakaian per layanan
+          {tr('Atur pemakaian per layanan')}
         </summary>
         <form
           className="space-y-4 mt-4"
@@ -201,42 +206,42 @@ export const MaterialSetup: React.FC = () => {
           }}
         >
           <label className="block">
-            <span className="qp-label">Layanan</span>
+            <span className="qp-label">{tr('Layanan')}</span>
             <select
               className="qp-field"
               required
-              aria-label="Layanan"
+              aria-label={tr('Layanan')}
               value={serviceId}
               onChange={(e) => setServiceId(e.target.value)}
             >
-              <option value="">Pilih layanan</option>
+              <option value="">{tr('Pilih layanan')}</option>
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name} · {s.unit}
+                  {tr(s.name)} · {tr(s.unit)}
                 </option>
               ))}
             </select>
           </label>
           <label className="block">
-            <span className="qp-label">Pencatatan bahan</span>
+            <span className="qp-label">{tr('Pencatatan bahan')}</span>
             <select
               className="qp-field"
               required
               value={mode}
               onChange={(e) => setMode(e.target.value)}
             >
-              <option value="">Belum diatur — perlu pemeriksaan</option>
-              <option value="none">Jasa tanpa bahan fisik</option>
-              <option value="automatic">Potong bahan otomatis</option>
+              <option value="">{tr('Belum diatur — perlu pemeriksaan')}</option>
+              <option value="none">{tr('Jasa tanpa bahan fisik')}</option>
+              <option value="automatic">{tr('Potong bahan otomatis')}</option>
             </select>
           </label>
           {mode === 'automatic' && (
             <div className="space-y-4">
               <p className="qp-notice">
-                Untuk 1 {service?.unit || 'unit layanan'}, berapa bahan yang
-                dipakai? Konfigurasi ini berlaku untuk ukuran standar tanpa
-                tambahan bingkai. Varian lain ditandai perlu pemeriksaan; buat
-                layanan terpisah bila pemakaiannya berbeda.
+                {tr('Untuk 1')} {service?.unit || tr('unit layanan')}
+                {tr(
+                  ', berapa bahan yang dipakai? Konfigurasi ini berlaku untuk ukuran standar tanpa tambahan bingkai. Varian lain ditandai perlu pemeriksaan; buat layanan terpisah bila pemakaiannya berbeda.',
+                )}
               </p>
               {usage.map((u, i) => (
                 <div
@@ -244,7 +249,7 @@ export const MaterialSetup: React.FC = () => {
                   className="grid grid-cols-[1fr_100px_44px] gap-2 items-end"
                 >
                   <label>
-                    <span className="qp-label">Bahan</span>
+                    <span className="qp-label">{tr('Bahan')}</span>
                     <select
                       className="qp-field"
                       required
@@ -257,16 +262,16 @@ export const MaterialSetup: React.FC = () => {
                         )
                       }
                     >
-                      <option value="">Pilih bahan</option>
+                      <option value="">{tr('Pilih bahan')}</option>
                       {inventory.map((item) => (
                         <option key={item.id} value={item.id}>
-                          {item.name} ({item.unit})
+                          {tr(item.name)} ({tr(item.unit)})
                         </option>
                       ))}
                     </select>
                   </label>
                   <label>
-                    <span className="qp-label">Pemakaian</span>
+                    <span className="qp-label">{tr('Pemakaian')}</span>
                     <input
                       className="qp-field"
                       type="number"
@@ -288,7 +293,7 @@ export const MaterialSetup: React.FC = () => {
                   <button
                     className="qp-icon-button"
                     type="button"
-                    aria-label={`Hapus bahan ${i + 1}`}
+                    aria-label={tr(`Hapus bahan ${i + 1}`)}
                     onClick={() =>
                       setUsage((list) => list.filter((_, j) => j !== i))
                     }
@@ -308,7 +313,7 @@ export const MaterialSetup: React.FC = () => {
                 }
               >
                 <Plus size={16} />
-                Tambah bahan
+                {tr('Tambah bahan')}
               </button>
             </div>
           )}
@@ -316,13 +321,13 @@ export const MaterialSetup: React.FC = () => {
             className="qp-button"
             disabled={busy || !inventoryReady || !serviceId}
           >
-            Simpan pemakaian bahan
+            {tr('Simpan pemakaian bahan')}
           </button>
         </form>
       </details>
       <details className="mt-4 border-t border-stone-200 pt-3">
         <summary className="text-sm font-semibold cursor-pointer py-3">
-          Cocokkan dengan hitungan fisik
+          {tr('Cocokkan dengan hitungan fisik')}
         </summary>
         <form
           className="grid sm:grid-cols-2 gap-4 mt-4"
@@ -341,24 +346,24 @@ export const MaterialSetup: React.FC = () => {
           }}
         >
           <label>
-            <span className="qp-label">Bahan yang dihitung</span>
+            <span className="qp-label">{tr('Bahan yang dihitung')}</span>
             <select
               className="qp-field"
               required
               value={countId}
               onChange={(e) => setCountId(e.target.value)}
             >
-              <option value="">Pilih bahan</option>
+              <option value="">{tr('Pilih bahan')}</option>
               {inventory.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name} ({item.unit})
+                  {tr(item.name)} ({tr(item.unit)})
                 </option>
               ))}
             </select>
           </label>
           <label>
             <span className="qp-label">
-              Jumlah fisik yang tersedia sekarang
+              {tr('Jumlah fisik yang tersedia sekarang')}
             </span>
             <input
               className="qp-field"
@@ -373,7 +378,9 @@ export const MaterialSetup: React.FC = () => {
             />
           </label>
           <label className="sm:col-span-2">
-            <span className="qp-label">Alasan / keterangan pemeriksaan</span>
+            <span className="qp-label">
+              {tr('Alasan / keterangan pemeriksaan')}
+            </span>
             <input
               className="qp-field"
               required
@@ -384,22 +391,23 @@ export const MaterialSetup: React.FC = () => {
           </label>
           <label className="sm:col-span-2 flex gap-3 items-start text-sm">
             <input type="checkbox" required />
-            Saya sudah menghitung fisik. Angka ini menggantikan saldo stok saat
-            ini; gunakan hanya saat tidak ada produksi / penjualan bersamaan.
+            {tr(
+              'Saya sudah menghitung fisik. Angka ini menggantikan saldo stok saat ini; gunakan hanya saat tidak ada produksi / penjualan bersamaan.',
+            )}
           </label>
           <button className="qp-button" disabled={busy || !inventoryReady}>
-            Simpan hasil hitung fisik
+            {tr('Simpan hasil hitung fisik')}
           </button>
         </form>
       </details>
       {error && (
         <p role="alert" className="qp-error mt-4">
-          {error}
+          {tr(error)}
         </p>
       )}
       {message && (
         <p role="status" className="qp-notice mt-4">
-          {message}
+          {tr(message)}
         </p>
       )}
     </section>

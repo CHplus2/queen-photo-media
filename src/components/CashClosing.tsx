@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import React, { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -62,30 +63,38 @@ export function CashClosing({
         JSON.stringify(cash.map((p) => p.id).sort()));
   return (
     <section className="qp-panel p-5 space-y-4">
-      <h2 className="!font-sans text-xl font-semibold">Tutup kas · {day}</h2>
+      <h2 className="!font-sans text-xl font-semibold">
+        {tr('Tutup kas ·')} {day}
+      </h2>
       <p className="text-sm text-stone-600">
-        Satu laci kas bersama per hari. Hentikan pencatatan transaksi sebentar
-        saat menghitung uang. QRIS dan transfer tidak masuk hitungan laci.
+        {tr(
+          'Satu laci kas bersama per hari. Hentikan pencatatan transaksi sebentar saat menghitung uang. QRIS dan transfer tidak masuk hitungan laci.',
+        )}
       </p>
       {closing ? (
         <div className="qp-notice space-y-2">
-          <p>Dicatat oleh {closing.by.name}</p>
           <p>
-            Kas seharusnya {formatRupiah(closing.expected)} · Uang dihitung{' '}
-            {formatRupiah(closing.counted)}
+            {tr('Dicatat oleh')} {closing.by.name}
           </p>
-          <strong>Selisih {formatRupiah(closing.difference)}</strong>
+          <p>
+            {tr('Kas seharusnya')} {formatRupiah(closing.expected)}{' '}
+            {tr('· Uang dihitung')} {formatRupiah(closing.counted)}
+          </p>
+          <strong>
+            {tr('Selisih')} {formatRupiah(closing.difference)}
+          </strong>
           {changed && (
             <p role="alert">
-              Ada transaksi berubah setelah penutupan. Hasil ini perlu diperiksa
-              penanggung jawab; jangan dianggap saldo terkini.
+              {tr(
+                'Ada transaksi berubah setelah penutupan. Hasil ini perlu diperiksa penanggung jawab; jangan dianggap saldo terkini.',
+              )}
             </p>
           )}
         </div>
       ) : (
         <details>
           <summary className="cursor-pointer py-2">
-            Hitung uang & tutup kas hari ini
+            {tr('Hitung uang & tutup kas hari ini')}
           </summary>
           <form
             className="space-y-4 mt-4"
@@ -137,7 +146,9 @@ export function CashClosing({
                 </label>
               ))}
               <label className="block">
-                <span className="qp-label">Catatan pengeluaran / selisih</span>
+                <span className="qp-label">
+                  {tr('Catatan pengeluaran / selisih')}
+                </span>
                 <input
                   className="qp-field"
                   maxLength={1000}
@@ -146,11 +157,15 @@ export function CashClosing({
                   onChange={(e) => setNote(e.target.value)}
                 />
               </label>
-              <p>Tunai masuk tercatat {formatRupiah(receipts)}</p>
-              <p>Kas seharusnya {formatRupiah(expected)}</p>
+              <p>
+                {tr('Tunai masuk tercatat')} {formatRupiah(receipts)}
+              </p>
+              <p>
+                {tr('Kas seharusnya')} {formatRupiah(expected)}
+              </p>
               {counted !== '' && (
                 <p className="qp-notice">
-                  Selisih {formatRupiah(Number(counted) - expected)}
+                  {tr('Selisih')} {formatRupiah(Number(counted) - expected)}
                 </p>
               )}
               <label className="flex gap-3 text-sm">
@@ -160,14 +175,15 @@ export function CashClosing({
                   checked={confirmed}
                   onChange={(e) => setConfirmed(e.target.checked)}
                 />
-                Semua penjualan sudah dicatat dan uang sudah dihitung. Ini hanya
-                laporan; tidak memotong uang atau mencatat refund lagi.
+                {tr(
+                  'Semua penjualan sudah dicatat dan uang sudah dihitung. Ini hanya laporan; tidak memotong uang atau mencatat refund lagi.',
+                )}
               </label>
               <button
                 className="qp-button"
                 disabled={!confirmed || !connected || !ready || busy}
               >
-                {busy ? 'Menyimpan…' : 'Simpan tutup kas'}
+                {busy ? tr('Menyimpan…') : tr('Simpan tutup kas')}
               </button>
             </fieldset>
           </form>
@@ -175,7 +191,7 @@ export function CashClosing({
       )}
       {error && (
         <p role="alert" className="qp-error">
-          {error}
+          {tr(error)}
         </p>
       )}
     </section>

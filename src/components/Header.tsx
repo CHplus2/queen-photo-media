@@ -1,3 +1,5 @@
+import { tr } from '../i18n/runtime';
+import { LanguageSwitcher } from '../i18n/LanguageProvider';
 import React, { useState, useEffect } from 'react';
 import { useStudio, AppView } from '../context/StudioContext';
 import {
@@ -78,17 +80,17 @@ export const Header: React.FC = () => {
   return (
     <>
       <a className="skip-link" href="#main-content">
-        Langsung ke konten
+        {tr('Langsung ke konten')}
       </a>
       {logoutError && (
         <p role="alert" className="qp-error">
-          {logoutError}
+          {tr(logoutError)}
         </p>
       )}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200">
         <div className="qp-container flex items-center justify-between gap-4 min-h-[80px]">
           <button
-            aria-label="Queen Photo — Beranda"
+            aria-label={tr('Queen Photo — Beranda')}
             onClick={() => navigate(staff ? 'pos' : 'beranda')}
             className="flex items-center gap-3 text-left shrink-0"
           >
@@ -100,12 +102,17 @@ export const Header: React.FC = () => {
                 Queen Photo<span className="text-amber-700">.</span>
               </span>
               <span className="hidden min-[380px]:block text-[10px] uppercase tracking-[.15em] text-stone-500 mt-1">
-                {staff ? 'Ruang kerja studio' : 'Pontianak · Sejak 1980'}
+                {staff
+                  ? tr('Ruang kerja studio')
+                  : tr('Pontianak · Sejak 1980')}
               </span>
             </span>
           </button>
           {!staff && (
-            <nav aria-label="Navigasi utama" className="hidden xl:flex gap-1">
+            <nav
+              aria-label={tr('Navigasi utama')}
+              className="hidden xl:flex gap-1"
+            >
               {links.map(([view, label]) => (
                 <button
                   key={view}
@@ -113,7 +120,7 @@ export const Header: React.FC = () => {
                   aria-current={currentView === view ? 'page' : undefined}
                   onClick={() => navigate(view)}
                 >
-                  {label}
+                  {tr(label)}
                 </button>
               ))}
             </nav>
@@ -122,7 +129,9 @@ export const Header: React.FC = () => {
             {!staff ? (
               <>
                 <button
-                  aria-label={`Buka keranjang, ${cart.reduce((n, item) => n + item.quantity, 0)} item`}
+                  aria-label={tr(
+                    `Buka keranjang, ${cart.reduce((n, item) => n + item.quantity, 0)} item`,
+                  )}
                   className="qp-icon-button relative border border-stone-200"
                   onClick={() => setIsCartOpen(true)}
                 >
@@ -138,7 +147,7 @@ export const Header: React.FC = () => {
                     className="qp-button"
                     onClick={() => navigate('layanan')}
                   >
-                    Mulai pesan <ArrowUpRight size={17} />
+                    {tr('Mulai pesan')} <ArrowUpRight size={17} />
                   </button>
                 </span>
               </>
@@ -152,11 +161,11 @@ export const Header: React.FC = () => {
                       navigate('beranda');
                     }}
                   >
-                    Lihat website <ArrowUpRight size={16} />
+                    {tr('Lihat website')} <ArrowUpRight size={16} />
                   </button>
                 </span>
                 <button
-                  aria-label="Keluar dari akun staf"
+                  aria-label={tr('Keluar dari akun staf')}
                   className="qp-icon-button"
                   onClick={async () => {
                     try {
@@ -177,7 +186,7 @@ export const Header: React.FC = () => {
             <span className="xl:hidden">
               <button
                 className="qp-icon-button border border-stone-200"
-                aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'}
+                aria-label={menuOpen ? tr('Tutup menu') : tr('Buka menu')}
                 aria-expanded={menuOpen}
                 aria-controls="mobile-navigation"
                 onClick={() => setMenuOpen(!menuOpen)}
@@ -190,14 +199,15 @@ export const Header: React.FC = () => {
                 onClick={openStaff}
                 className="hidden xl:block text-xs text-stone-500 border-l border-stone-200 pl-4 ml-2 min-h-11"
               >
-                Staf
+                {tr('Staf')}
               </button>
             )}
           </div>
         </div>
+        <LanguageSwitcher />
         {staff && (
           <nav
-            aria-label="Navigasi staf"
+            aria-label={tr('Navigasi staf')}
             className="qp-container hidden xl:flex gap-2 pb-3 overflow-x-auto"
           >
             {links.map(([view, label]) => (
@@ -207,7 +217,7 @@ export const Header: React.FC = () => {
                 aria-current={currentView === view ? 'page' : undefined}
                 onClick={() => navigate(view)}
               >
-                {label}
+                {tr(label)}
               </button>
             ))}
           </nav>
@@ -215,7 +225,7 @@ export const Header: React.FC = () => {
         {menuOpen && (
           <nav
             id="mobile-navigation"
-            aria-label="Menu seluler"
+            aria-label={tr('Menu seluler')}
             className="xl:hidden border-t border-stone-200 bg-white max-h-[calc(100dvh-80px)] overflow-y-auto"
           >
             <div className="qp-container py-4 grid gap-1">
@@ -226,7 +236,7 @@ export const Header: React.FC = () => {
                   aria-current={currentView === view ? 'page' : undefined}
                   onClick={() => navigate(view)}
                 >
-                  {label}
+                  {tr(label)}
                 </button>
               ))}
               <div className="border-t border-stone-200 mt-3 pt-3">
@@ -238,11 +248,11 @@ export const Header: React.FC = () => {
                       navigate('beranda');
                     }}
                   >
-                    Lihat website pelanggan
+                    {tr('Lihat website pelanggan')}
                   </button>
                 ) : (
                   <button className="qp-nav-link" onClick={openStaff}>
-                    Masuk sebagai staf
+                    {tr('Masuk sebagai staf')}
                   </button>
                 )}
               </div>

@@ -1,3 +1,5 @@
+import { orderItemName, serviceText } from '../i18n/catalogText';
+import { tr } from '../i18n/runtime';
 import { auth } from '../lib/firebase';
 import React, { useEffect, useRef, useState } from 'react';
 import { useStudio } from '../context/StudioContext';
@@ -125,7 +127,7 @@ export const AdminPosView: React.FC<{
   const active = services.filter(
     (s) =>
       s.isActive !== false &&
-      `${s.name} ${s.category}`
+      `${s.name} ${s.english?.name || ''} ${s.category}`
         .toLowerCase()
         .includes(search.toLowerCase().trim()),
   );
@@ -147,6 +149,7 @@ export const AdminPosView: React.FC<{
               id: crypto.randomUUID(),
               serviceId: id,
               serviceName: service.name,
+              serviceNameEn: service.english?.name || undefined,
               category: service.category,
               size: service.options?.sizes?.[0] || service.unit,
               quantity: 1,
@@ -233,26 +236,26 @@ export const AdminPosView: React.FC<{
     <div className="qp-container py-8 sm:py-10 pb-28 lg:pb-10">
       <div className="flex flex-wrap justify-between gap-4 items-start mb-6">
         <div>
-          <span className="qp-eyebrow">Ruang kerja Queen Photo</span>
+          <span className="qp-eyebrow">{tr('Ruang kerja Queen Photo')}</span>
           <h1 className="text-3xl font-semibold !font-sans mt-2">
-            {tab === 'sale' ? 'Kasir' : 'Pesanan'}
+            {tab === 'sale' ? tr('Kasir') : tr('Pesanan')}
           </h1>
           <p className="text-sm text-stone-500 mt-2">
-            Catat sekali. Laporan dan bahan terhubung ke pesanan.
+            {tr('Catat sekali. Laporan dan bahan terhubung ke pesanan.')}
           </p>
         </div>
         <button
           className="qp-button qp-button-secondary"
           onClick={() => setCurrentView('supervision')}
         >
-          {isSupervisor ? 'Ringkasan toko' : 'Penjualan hari ini'}{' '}
+          {isSupervisor ? tr('Ringkasan toko') : tr('Penjualan hari ini')}{' '}
           <ArrowRight size={16} />
         </button>
       </div>
       {tab === 'sale' && draft.items.length > 0 && !saleFormVisible && (
         <aside
           className="lg:hidden fixed bottom-4 left-4 right-4 z-40"
-          aria-label="Akses rincian penjualan"
+          aria-label={tr('Akses rincian penjualan')}
         >
           <button
             type="button"
@@ -263,20 +266,24 @@ export const AdminPosView: React.FC<{
                 ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }
           >
-            Lihat penjualan · {formatRupiah(total)} <ArrowRight size={16} />
+            {tr('Lihat penjualan ·')} {formatRupiah(total)}{' '}
+            <ArrowRight size={16} />
           </button>
         </aside>
       )}
       {!isFirebaseConnected && (
         <p role="status" className="qp-notice mb-5">
-          Menunggu koneksi database. Pastikan muncul konfirmasi tersimpan
-          sebelum menyerahkan struk.
+          {tr(
+            'Menunggu koneksi database. Pastikan muncul konfirmasi tersimpan sebelum menyerahkan struk.',
+          )}
         </p>
       )}
       {invalidOrderIds.length > 0 && (
         <p role="alert" className="qp-error">
-          Ada {invalidOrderIds.length} pesanan dengan data tidak valid. Hubungi
-          pemilik; daftar dan laporan belum lengkap.
+          {tr('Ada')} {invalidOrderIds.length}{' '}
+          {tr(
+            'pesanan dengan data tidak valid. Hubungi pemilik; daftar dan laporan belum lengkap.',
+          )}
         </p>
       )}
       {tab === 'queue' ? (
@@ -292,22 +299,26 @@ export const AdminPosView: React.FC<{
                 <Check size={22} />
                 <div className="min-w-0 flex-1">
                   <h2 className="!font-sans font-semibold text-lg">
-                    Penjualan tersimpan · {formatRupiah(saved.totalAmount)}
+                    {tr('Penjualan tersimpan ·')}{' '}
+                    {formatRupiah(saved.totalAmount)}
                   </h2>
                   <p className="text-sm text-stone-600 mt-1">
                     {saved.paymentStatus === 'LUNAS'
-                      ? 'Pembayaran dicatat diterima.'
+                      ? tr('Pembayaran dicatat diterima.')
                       : saved.paymentStatus === 'SEBAGIAN'
-                        ? `DP tercatat ${formatRupiah(saved.payments?.reduce((n, p) => n + p.amount, 0) || saved.initialPaymentAmount || 0)}. Sisa bayar tersedia di Pesanan.`
-                        : 'Pembayaran belum diterima.'}{' '}
+                        ? tr(
+                            `DP tercatat ${formatRupiah(saved.payments?.reduce((n, p) => n + p.amount, 0) || saved.initialPaymentAmount || 0)}. Sisa bayar tersedia di Pesanan.`,
+                          )
+                        : tr('Pembayaran belum diterima.')}{' '}
                     {saved.orderStatus === 'SELESAI'
-                      ? 'Tidak perlu memperbarui status kerja.'
-                      : 'Tersedia di daftar tindak lanjut.'}
+                      ? tr('Tidak perlu memperbarui status kerja.')
+                      : tr('Tersedia di daftar tindak lanjut.')}
                   </p>
                   {saved.inventoryStatus === 'NEEDS_REVIEW' && (
                     <p className="text-sm text-amber-900 mt-2">
-                      Bahan belum dipotong. Penanggung jawab perlu memeriksa
-                      pemakaian atau pengecualian stok.
+                      {tr(
+                        'Bahan belum dipotong. Penanggung jawab perlu memeriksa pemakaian atau pengecualian stok.',
+                      )}
                     </p>
                   )}
                   <p className="text-xs text-stone-500 break-all mt-2">
@@ -319,8 +330,8 @@ export const AdminPosView: React.FC<{
                   onClick={() => onPrintReceipt(saved)}
                 >
                   <Printer size={17} />
-                  <span className="hidden sm:inline">Struk</span>
-                  <span className="sr-only sm:hidden">Cetak struk</span>
+                  <span className="hidden sm:inline">{tr('Struk')}</span>
+                  <span className="sr-only sm:hidden">{tr('Cetak struk')}</span>
                 </button>
               </div>
             </section>
@@ -328,7 +339,7 @@ export const AdminPosView: React.FC<{
           <div className="grid lg:grid-cols-[1.15fr_1fr] gap-6 items-start">
             <section className="qp-panel p-5 sm:p-6">
               <label className="qp-label" htmlFor="staff-service-search">
-                Pilih layanan
+                {tr('Pilih layanan')}
               </label>
               <div className="relative">
                 <Search
@@ -339,7 +350,7 @@ export const AdminPosView: React.FC<{
                   id="staff-service-search"
                   className="qp-field !pl-10"
                   type="search"
-                  placeholder="Cari cetak foto, pas foto, studio…"
+                  placeholder={tr('Cari cetak foto, pas foto, studio…')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -353,20 +364,20 @@ export const AdminPosView: React.FC<{
                     onClick={() => add(service.id)}
                   >
                     <span className="text-sm font-semibold block leading-snug">
-                      {service.name}
+                      {serviceText(service, 'name')}
                     </span>
                     <span className="text-sm mt-3 block">
                       {formatRupiah(service.basePrice)}
                     </span>
                     <span className="text-xs text-stone-500 mt-1 block">
-                      per {service.unit}
+                      {tr('per')} {tr(serviceText(service, 'unit'))}
                     </span>
                   </button>
                 ))}
               </div>
               {active.length === 0 && (
                 <p className="qp-notice mt-5">
-                  Layanan tidak ditemukan. Coba kata lain.
+                  {tr('Layanan tidak ditemukan. Coba kata lain.')}
                 </p>
               )}
             </section>
@@ -377,12 +388,13 @@ export const AdminPosView: React.FC<{
             >
               <fieldset disabled={busy} className="space-y-5 min-w-0">
                 <legend className="text-lg font-semibold mb-5">
-                  Rincian penjualan
+                  {tr('Rincian penjualan')}
                 </legend>
                 {!draft.items.length ? (
                   <p className="qp-notice">
-                    Pilih satu atau beberapa layanan di sebelah kiri. Pelanggan
-                    tidak perlu membuat akun.
+                    {tr(
+                      'Pilih satu atau beberapa layanan di sebelah kiri. Pelanggan tidak perlu membuat akun.',
+                    )}
                   </p>
                 ) : (
                   <ul className="divide-y divide-stone-200">
@@ -391,7 +403,7 @@ export const AdminPosView: React.FC<{
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <h2 className="!font-sans !tracking-normal text-sm font-semibold">
-                              {item.serviceName}
+                              {orderItemName(item)}
                             </h2>
                             <p className="text-xs text-stone-500 mt-1">
                               {item.size}
@@ -399,7 +411,7 @@ export const AdminPosView: React.FC<{
                           </div>
                           <button
                             type="button"
-                            aria-label={`Hapus ${item.serviceName}`}
+                            aria-label={tr(`Hapus ${orderItemName(item)}`)}
                             className="qp-icon-button shrink-0"
                             onClick={() =>
                               setDraft((d) => ({
@@ -413,7 +425,7 @@ export const AdminPosView: React.FC<{
                         </div>
                         <div className="grid grid-cols-[85px_1fr] gap-4 mt-3">
                           <label>
-                            <span className="qp-label">Jumlah</span>
+                            <span className="qp-label">{tr('Jumlah')}</span>
                             <input
                               className="qp-field"
                               type="number"
@@ -442,14 +454,16 @@ export const AdminPosView: React.FC<{
                             </strong>
                             <details>
                               <summary className="text-xs text-stone-500 cursor-pointer min-h-8">
-                                Harga satuan {formatRupiah(item.unitPrice)} ·
-                                Ubah
+                                {tr('Harga satuan')}{' '}
+                                {formatRupiah(item.unitPrice)} {tr('· Ubah')}
                               </summary>
                               {(services.find((s) => s.id === item.serviceId)
                                 ?.options?.sizes?.length || 0) > 1 && (
                                 <label className="block mt-3 text-left">
                                   <span className="qp-label">
-                                    Ukuran — periksa harga setelah mengubah
+                                    {tr(
+                                      'Ukuran — periksa harga setelah mengubah',
+                                    )}
                                   </span>
                                   <select
                                     className="qp-field"
@@ -468,14 +482,16 @@ export const AdminPosView: React.FC<{
                                     {services
                                       .find((s) => s.id === item.serviceId)
                                       ?.options?.sizes?.map((size) => (
-                                        <option key={size}>{size}</option>
+                                        <option key={size} value={size}>
+                                          {tr(size)}
+                                        </option>
                                       ))}
                                   </select>
                                 </label>
                               )}
                               <label className="block mt-3 text-left">
                                 <span className="qp-label">
-                                  Harga satuan (Rp)
+                                  {tr('Harga satuan (Rp)')}
                                 </span>
                                 <input
                                   className="qp-field"
@@ -507,7 +523,7 @@ export const AdminPosView: React.FC<{
                   </ul>
                 )}
                 <fieldset>
-                  <legend className="qp-label">Pembayaran</legend>
+                  <legend className="qp-label">{tr('Pembayaran')}</legend>
                   <div className="flex gap-2 flex-wrap">
                     {(
                       [
@@ -533,7 +549,7 @@ export const AdminPosView: React.FC<{
                             }))
                           }
                         />
-                        {label}
+                        {tr(label)}
                       </label>
                     ))}
                   </div>
@@ -547,11 +563,14 @@ export const AdminPosView: React.FC<{
                     />
                     <span>
                       {draft.payment === 'TUNAI_KASIR'
-                        ? 'Uang tunai sudah diterima'
-                        : 'Uang masuk sudah dicek di aplikasi bank / merchant QRIS'}
+                        ? tr('Uang tunai sudah diterima')
+                        : tr(
+                            'Uang masuk sudah dicek di aplikasi bank / merchant QRIS',
+                          )}
                       <span className="block text-xs text-stone-500 mt-1">
-                        Jika belum dicentang, pembayaran tetap menunggu
-                        konfirmasi.
+                        {tr(
+                          'Jika belum dicentang, pembayaran tetap menunggu konfirmasi.',
+                        )}
                       </span>
                     </span>
                   </label>
@@ -569,12 +588,12 @@ export const AdminPosView: React.FC<{
                             }))
                           }
                         />
-                        Bayar sebagian / DP
+                        {tr('Bayar sebagian / DP')}
                       </label>
                       {draft.partial && (
                         <label className="block">
                           <span className="qp-label">
-                            Pembayaran sekarang (Rp)
+                            {tr('Pembayaran sekarang (Rp)')}
                           </span>
                           <input
                             className="qp-field"
@@ -597,7 +616,7 @@ export const AdminPosView: React.FC<{
                         <>
                           <label className="block">
                             <span className="qp-label">
-                              Uang diterima (Rp, untuk hitung kembalian)
+                              {tr('Uang diterima (Rp, untuk hitung kembalian)')}
                             </span>
                             <input
                               className="qp-field"
@@ -634,7 +653,7 @@ export const AdminPosView: React.FC<{
                                   }
                                 >
                                   {n === paymentAmount
-                                    ? 'Uang pas'
+                                    ? tr('Uang pas')
                                     : formatRupiah(n)}
                                 </button>
                               ))}
@@ -645,15 +664,19 @@ export const AdminPosView: React.FC<{
                               className="qp-notice text-lg font-semibold"
                             >
                               {Number(draft.cashTendered) >= paymentAmount
-                                ? `Kembalian ${formatRupiah(Number(draft.cashTendered) - paymentAmount)}`
-                                : `Uang kurang ${formatRupiah(paymentAmount - Number(draft.cashTendered))}`}
+                                ? tr(
+                                    `Kembalian ${formatRupiah(Number(draft.cashTendered) - paymentAmount)}`,
+                                  )
+                                : tr(
+                                    `Uang kurang ${formatRupiah(paymentAmount - Number(draft.cashTendered))}`,
+                                  )}
                             </p>
                           )}
                         </>
                       )}
                       {draft.partial && (
                         <p className="qp-notice">
-                          Sisa bayar{' '}
+                          {tr('Sisa bayar')}{' '}
                           {formatRupiah(Math.max(0, total - paymentAmount))}
                         </p>
                       )}
@@ -669,16 +692,18 @@ export const AdminPosView: React.FC<{
                     }
                   />
                   <span className="font-semibold">
-                    Dikerjakan / diambil nanti
+                    {tr('Dikerjakan / diambil nanti')}
                     <span className="block text-xs text-stone-500 font-normal mt-1">
-                      Biarkan kosong untuk pembelian yang langsung selesai.
+                      {tr(
+                        'Biarkan kosong untuk pembelian yang langsung selesai.',
+                      )}
                     </span>
                   </span>
                 </label>
                 {(draft.later || !isPaid) && (
                   <div className="space-y-4 bg-stone-50 rounded-xl p-4">
                     <label className="block">
-                      <span className="qp-label">Nama pelanggan</span>
+                      <span className="qp-label">{tr('Nama pelanggan')}</span>
                       <input
                         className="qp-field"
                         required
@@ -690,7 +715,9 @@ export const AdminPosView: React.FC<{
                       />
                     </label>
                     <label className="block">
-                      <span className="qp-label">WhatsApp (opsional)</span>
+                      <span className="qp-label">
+                        {tr('WhatsApp (opsional)')}
+                      </span>
                       <input
                         className="qp-field"
                         type="tel"
@@ -702,7 +729,9 @@ export const AdminPosView: React.FC<{
                       />
                     </label>
                     <label className="block">
-                      <span className="qp-label">Tanggal janji (opsional)</span>
+                      <span className="qp-label">
+                        {tr('Tanggal janji (opsional)')}
+                      </span>
                       <input
                         className="qp-field"
                         type="date"
@@ -716,12 +745,12 @@ export const AdminPosView: React.FC<{
                 )}
                 <details>
                   <summary className="text-sm cursor-pointer py-2">
-                    Catatan / nama pelanggan (opsional)
+                    {tr('Catatan / nama pelanggan (opsional)')}
                   </summary>
                   <div className="space-y-3 mt-3">
                     {!draft.later && isPaid && (
                       <label className="block">
-                        <span className="qp-label">Nama pelanggan</span>
+                        <span className="qp-label">{tr('Nama pelanggan')}</span>
                         <input
                           className="qp-field"
                           value={draft.name}
@@ -733,7 +762,7 @@ export const AdminPosView: React.FC<{
                       </label>
                     )}
                     <label className="block">
-                      <span className="qp-label">Catatan</span>
+                      <span className="qp-label">{tr('Catatan')}</span>
                       <textarea
                         className="qp-field"
                         rows={2}
@@ -749,17 +778,18 @@ export const AdminPosView: React.FC<{
                 {!draft.later && (
                   <details>
                     <summary className="text-sm cursor-pointer py-2">
-                      Stok tidak cocok? Catat pengecualian
+                      {tr('Stok tidak cocok? Catat pengecualian')}
                     </summary>
                     <p className="text-sm text-stone-600 my-2">
-                      Hanya jika barang benar-benar sudah dijual tetapi saldo
-                      stok salah. Penjualan disimpan tanpa pemotongan bahan dan
-                      muncul untuk pemeriksaan penanggung jawab.
+                      {tr(
+                        'Hanya jika barang benar-benar sudah dijual tetapi saldo stok salah. Penjualan disimpan tanpa pemotongan bahan dan muncul untuk pemeriksaan penanggung jawab.',
+                      )}
                     </p>
                     <label>
                       <span className="qp-label">
-                        Alasan pengecualian stok (kosongkan untuk pemotongan
-                        normal)
+                        {tr(
+                          'Alasan pengecualian stok (kosongkan untuk pemotongan normal)',
+                        )}
                       </span>
                       <input
                         className="qp-field"
@@ -777,9 +807,10 @@ export const AdminPosView: React.FC<{
                 )}
                 {missing.length > 0 && (
                   <p className="text-xs text-amber-900">
-                    Pemakaian bahan {missing.length} layanan belum diatur.
-                    Penjualan tetap dapat dicatat; stok akan ditandai perlu
-                    pemeriksaan.
+                    {tr('Pemakaian bahan')} {missing.length}{' '}
+                    {tr(
+                      'layanan belum diatur. Penjualan tetap dapat dicatat; stok akan ditandai perlu pemeriksaan.',
+                    )}
                   </p>
                 )}
                 <div className="border-t border-stone-200 pt-5 flex justify-between font-semibold text-xl">
@@ -788,7 +819,7 @@ export const AdminPosView: React.FC<{
                 </div>
                 {error && (
                   <p role="alert" className="qp-error">
-                    {error}
+                    {tr(error)}
                   </p>
                 )}
                 <button
@@ -799,16 +830,16 @@ export const AdminPosView: React.FC<{
                   {busy ? (
                     <>
                       <LoaderCircle size={18} className="animate-spin" />
-                      Menyimpan…
+                      {tr('Menyimpan…')}
                     </>
                   ) : (
                     <>
-                      Simpan penjualan <Check size={17} />
+                      {tr('Simpan penjualan')} <Check size={17} />
                     </>
                   )}
                 </button>
                 <p className="text-xs text-stone-500 text-center">
-                  Struk dan ringkasan tersedia setelah tersimpan.
+                  {tr('Struk dan ringkasan tersedia setelah tersimpan.')}
                 </p>
                 {draft.items.length > 0 && (
                   <button
@@ -817,7 +848,9 @@ export const AdminPosView: React.FC<{
                     onClick={() => {
                       if (
                         window.confirm(
-                          'Kosongkan isian dan mulai penjualan baru? Periksa riwayat bila penyimpanan sebelumnya belum pasti.',
+                          tr(
+                            'Kosongkan isian dan mulai penjualan baru? Periksa riwayat bila penyimpanan sebelumnya belum pasti.',
+                          ),
                         )
                       ) {
                         setDraft(freshDraft());
@@ -825,7 +858,7 @@ export const AdminPosView: React.FC<{
                       }
                     }}
                   >
-                    Kosongkan isian
+                    {tr('Kosongkan isian')}
                   </button>
                 )}
               </fieldset>

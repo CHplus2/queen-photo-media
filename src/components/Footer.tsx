@@ -1,3 +1,4 @@
+import { tr } from '../i18n/runtime';
 import React, { useState } from 'react';
 import { useStudio } from '../context/StudioContext';
 import { MapPin, ArrowUpRight, Aperture } from 'lucide-react';
@@ -13,8 +14,8 @@ export const Footer: React.FC = () => {
     return (
       <footer className="border-t border-stone-200 py-6 text-xs text-stone-500">
         <div className="qp-container flex justify-between gap-4">
-          <span>Queen Photo · Ruang kerja studio</span>
-          <span>Pontianak, WIB</span>
+          <span>{tr('Queen Photo · Ruang kerja studio')}</span>
+          <span>{tr('Pontianak, WIB')}</span>
         </div>
       </footer>
     );
@@ -31,14 +32,14 @@ export const Footer: React.FC = () => {
                 </span>
               </span>
               <p className="text-sm text-stone-300 leading-relaxed mt-5 max-w-sm">
-                Menjaga cerita dalam setiap foto.
+                {tr('Menjaga cerita dalam setiap foto.')}
                 <br />
-                Studio dan cetak foto di Pontianak, sejak 1980.
+                {tr('Studio dan cetak foto di Pontianak, sejak 1980.')}
               </p>
             </div>
             <div>
               <h2 className="!font-sans text-sm font-semibold !tracking-normal text-white mb-4">
-                Jelajahi
+                {tr('Jelajahi')}
               </h2>
               <div className="grid gap-1 justify-items-start">
                 {(
@@ -54,20 +55,20 @@ export const Footer: React.FC = () => {
                     key={view}
                     onClick={() => setCurrentView(view)}
                   >
-                    {label}
+                    {tr(label)}
                   </button>
                 ))}
                 <button
                   className="text-sm min-h-10 hover:text-white"
                   onClick={() => setIsSurveyModalOpen(true)}
                 >
-                  Beri masukan
+                  {tr('Beri masukan')}
                 </button>
               </div>
             </div>
             <div>
               <h2 className="!font-sans text-sm font-semibold !tracking-normal text-white mb-5">
-                Temui kami
+                {tr('Temui kami')}
               </h2>
               <div className="flex gap-3 text-sm leading-relaxed">
                 <MapPin size={18} className="shrink-0 mt-1" />
@@ -78,7 +79,7 @@ export const Footer: React.FC = () => {
                 </p>
               </div>
               <p className="text-sm mt-5 text-stone-300">
-                Senin–Sabtu · 09.00–20.30 WIB
+                {tr('Senin–Sabtu · 09.00–20.30 WIB')}
               </p>
               {phone && (
                 <a
@@ -87,7 +88,7 @@ export const Footer: React.FC = () => {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Hubungi studio <ArrowUpRight size={15} />
+                  {tr('Hubungi studio')} <ArrowUpRight size={15} />
                 </a>
               )}
             </div>
@@ -98,7 +99,8 @@ export const Footer: React.FC = () => {
               className="min-h-8 hover:text-white"
               onClick={() => setLogin(true)}
             >
-              Portal staf <ArrowUpRight size={13} className="inline ml-1" />
+              {tr('Portal staf')}{' '}
+              <ArrowUpRight size={13} className="inline ml-1" />
             </button>
           </div>
         </div>
